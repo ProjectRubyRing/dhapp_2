@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Spring Boot(Spring MVC) を WildFly に WAR デプロイする際の調整。
+
+    - jaxrs (RESTEasy) サブシステムを除外:
+        Spring MVC と RESTEasy がリクエストマッピングで競合するのを防ぐ。
+    - weld (CDI) サブシステムを除外:
+        Spring の DI を使うため CDI スキャンは不要（起動高速化・競合回避）。
+    - jpa サブシステムを除外:
+        本アプリは JPA を使わず JdbcTemplate のみ。不要なエンティティスキャンを避ける。
+    - logging サブシステムを除外:
+        WildFly の SLF4J バインディング注入を止め、war 内の Logback を使う。
+        これをしないと SLF4J バインディングが競合し、起動時に
+        "LoggerFactory is not a Logback LoggerContext but Logback is on the classpath"
+        で失敗する。
+
+    XA データソース／JTA は WildFly コアの datasources / transactions サブシステムが
+    提供するものであり、ここでは除外しない。
+-->
+<jboss-deployment-structure xmlns="urn:jboss:deployment-structure:1.3">
+    <deployment>
+        <exclude-subsystems>
+            <subsystem name="jaxrs"/>
+            <subsystem name="weld"/>
+            <subsystem name="jpa"/>
+            <subsystem name="logging"/>
+        </exclude-subsystems>
+    </deployment>
+</jboss-deployment-structure>

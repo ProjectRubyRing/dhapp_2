@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>dhapp</artifactId>
+    <version>1.0.0</version>
+    <!-- WildFly へデプロイするため war パッケージング -->
+    <packaging>war</packaging>
+    <name>dhapp</name>
+    <description>Spring Boot WAR on WildFly with JTA/XA 2PC across DHCOMAP and DHINFAP</description>
+
+    <properties>
+        <!-- OpenJDK 21 -->
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Spring MVC (REST) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+            WAR デプロイ時は WildFly(Undertow) のサーブレットコンテナを使うため、
+            組み込み Tomcat は provided にして war に含めない。
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JdbcTemplate（DataSource は WildFly の JNDI から取得） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+
+        <!-- ElastiCache for Valkey (Redis 互換) 用 Spring Data Redis + Lettuce -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Bean Validation (jakarta.validation) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!--
+            JTA API (jakarta.transaction)。WildFly が実装を提供するため provided。
+            JtaTransactionManager / UserTransaction はランタイムにコンテナのものを使う。
+        -->
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+            MySQL Connector/J はアプリの war には含めない。
+            WildFly のモジュール（com.mysql）として登録し、XA データソースを
+            WildFly 側で構成する。バージョンは 8.4.0 を使用（9.x も互換）。
+        -->
+
+        <!-- テスト -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- 生成される war 名を dhapp.war に固定 → コンテキストパスは /dhapp -->
+        <finalName>dhapp</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

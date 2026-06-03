@@ -1,0 +1,44 @@
+server:
+  # WildFly にデプロイする場合この設定は使われない（Undertow のポートが使われる）。
+  # ローカルで java -jar 実行する場合のみ有効。
+  port: 8080
+
+spring:
+  application:
+    name: dhapp
+
+app:
+  # ===== ElastiCache for Valkey (Redis 互換) =====
+  valkey:
+    host: ${VALKEY_HOST:localhost}
+    port: ${VALKEY_PORT:6379}
+    # ElastiCache の AUTH トークン。未設定なら認証なし。
+    password: ${VALKEY_PASSWORD:}
+    # 転送中暗号化(TLS)が有効なクラスタでは true にする。
+    ssl: ${VALKEY_SSL:false}
+    timeout-ms: ${VALKEY_TIMEOUT_MS:2000}
+    session-prefix: ${VALKEY_SESSION_PREFIX:session:}
+    session-ttl-seconds: ${VALKEY_SESSION_TTL_SECONDS:3600}
+
+  # ===== Aurora MySQL 互換 (DHCOMAP / DHINFAP) =====
+  # 接続情報そのもの（URL/ユーザー/パスワード）は WildFly の XA データソース側で定義する。
+  # アプリは JNDI 名のみ知っていればよい。
+  datasource:
+    dhcomap:
+      jndi-name: ${DHCOMAP_JNDI:java:/jdbc/DHCOMAPXADS}
+    dhinfap:
+      jndi-name: ${DHINFAP_JNDI:java:/jdbc/DHINFAPXADS}
+
+  # ===== 外部 REST API =====
+  external-api:
+    url: ${EXTERNAL_API_URL:http://localhost:9090/receive}
+    connect-timeout-ms: ${EXTERNAL_API_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${EXTERNAL_API_READ_TIMEOUT_MS:5000}
+
+logging:
+  level:
+    root: INFO
+    com.example.dhapp: INFO
+    # JTA/トランザクションの詳細を見たい場合は DEBUG に上げる
+    org.springframework.transaction: INFO
+    org.springframework.jdbc.core: INFO
