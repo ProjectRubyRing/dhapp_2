@@ -42,11 +42,17 @@ public class CacheController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CacheResponse> execute(@Valid @RequestBody DemoRequest request) {
+        long startedAt = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
-        log.info("POST /api/cache/execute received. requestId={}, sessionId={}", requestId, request.getSessionId());
+        log.info("POST /api/cache/execute received. requestId={}, sessionId={}, userId={}",
+                requestId, request.getSessionId(), request.getUserId());
+        log.debug("POST /api/cache/execute request body detail. requestId={}, sessionId={}, userId={}, messageLen={}",
+                requestId, request.getSessionId(), request.getUserId(),
+                request.getMessage() == null ? 0 : request.getMessage().length());
 
         String sessionKey = valkeySessionService.saveSession(request, requestId);
         Map<String, String> stored = valkeySessionService.getSession(request.getSessionId());
+        log.debug("POST /api/cache/execute read-back stored fields={}, keys={}", stored.size(), stored.keySet());
 
         CacheResponse response = new CacheResponse();
         response.setStatus("SUCCESS");
@@ -54,7 +60,9 @@ public class CacheController {
         response.setSessionKey(sessionKey);
         response.setStored(stored);
 
-        log.info("POST /api/cache/execute done. requestId={}, key={}", requestId, sessionKey);
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        log.info("POST /api/cache/execute done. requestId={}, status={}, key={}, storedFields={}, elapsedMs={}",
+                requestId, response.getStatus(), sessionKey, stored.size(), elapsedMs);
         return ResponseEntity.ok(response);
     }
 }

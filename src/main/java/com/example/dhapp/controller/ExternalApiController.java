@@ -43,8 +43,13 @@ public class ExternalApiController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ExternalApiResponse> execute(@Valid @RequestBody DemoRequest request) {
+        long startedAt = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
-        log.info("POST /api/external/execute received. requestId={}, sessionId={}", requestId, request.getSessionId());
+        log.info("POST /api/external/execute received. requestId={}, sessionId={}, userId={}",
+                requestId, request.getSessionId(), request.getUserId());
+        log.debug("POST /api/external/execute request body detail. requestId={}, sessionId={}, userId={}, messageLen={}",
+                requestId, request.getSessionId(), request.getUserId(),
+                request.getMessage() == null ? 0 : request.getMessage().length());
 
         ExternalApiResponse response = new ExternalApiResponse();
         response.setRequestId(requestId);
@@ -59,7 +64,9 @@ public class ExternalApiController {
             response.setMessage(e.getMessage());
         }
 
-        log.info("POST /api/external/execute done. requestId={}, status={}", requestId, response.getStatus());
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        log.info("POST /api/external/execute done. requestId={}, status={}, externalApiStatus={}, elapsedMs={}",
+                requestId, response.getStatus(), response.getExternalApiStatus(), elapsedMs);
         return ResponseEntity.ok(response);
     }
 }

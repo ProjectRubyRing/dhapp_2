@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    ログ出力構成。
+
+    このアプリは WildFly(JBoss EAP) に WAR デプロイされるが、
+    jboss-deployment-structure.xml で logging サブシステムを除外しているため、
+    ログ出力はこの war 内の Logback（Spring Boot 標準バインディング）が担う。
+
+    出力先はすべて環境変数 LOG_OUT_DIR で指定したディレクトリ配下に集約する。
+    （未設定時のローカル実行用デフォルトは ./logs）
+
+      ${LOG_OUT_DIR}/application.log   … 各 REST API 機能の処理内容を詳細に記録（アプリログ）
+      ${LOG_OUT_DIR}/error.log        … ERROR レベルのみ。Java 例外スタックトレース形式で出力。
+                                         CloudWatch Agent のマルチライン処理検証用。
+      ${LOG_OUT_DIR}/mid/server.log   … JBoss EAP のサーバログ相当。EAP 既定フォーマットで
+                                         フレームワーク／アプリを含む全ログを記録する。
+-->
+<configuration>
+
+    <!-- 出力ルートディレクトリ（環境変数 LOG_OUT_DIR）。未設定ならカレント配下 ./logs -->
+    <property name="LOG_OUT_DIR" value="${LOG_OUT_DIR:-logs}"/>
+
+    <!-- アプリログ用パターン（詳細・requestId 追跡しやすい形式） -->
+    <property name="APP_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{48} - %msg%n%ex"/>
+
+    <!--
+        JBoss EAP standalone の server.log 既定パターンに合わせる。
+        EAP:  %d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n
+        （ミリ秒がカンマ区切り、レベル・カテゴリ・スレッド・メッセージ・例外）
+    -->
+    <property name="SERVER_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss,SSS} %-5level [%logger] (%thread) %msg%n%ex"/>
+
+    <!-- ===== コンソール（開発・コンテナ標準出力用） ===== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ===== アプリログ: LOG_OUT_DIR/application.log ===== -->
+    <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+        ===== エラーログ: LOG_OUT_DIR/error.log =====
+        ERROR レベルのみを通す。例外は %ex により標準の Java スタックトレース形式で
+        （"Caused by:" / "... N more" を含めて）複数行に展開される。
+        各エントリは必ず先頭がタイムスタンプで始まるため、CloudWatch Agent 側で
+        multi_line_start_pattern に "^\d{4}-\d{2}-\d{2}" を指定すれば
+        スタックトレース全体を 1 イベントとして扱えることを確認できる。
+    -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+        ===== サーバログ: LOG_OUT_DIR/mid/server.log =====
+        JBoss EAP のサーバログ相当を EAP 既定フォーマットで出力する。
+        root に接続し、Spring/WildFly 由来を含む全カテゴリのログを収集する。
+    -->
+    <appender name="SERVER_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/mid/server.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/mid/server.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${SERVER_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+        アプリ本体（各 REST API 機能）は DEBUG まで詳細に出力し、専用の application.log に記録。
+        additivity=true のまま root にも伝播させ、server.log（全体）と error.log（ERROR のみ）にも載せる。
+    -->
+    <logger name="com.example.dhapp" level="DEBUG">
+        <appender-ref ref="APP_FILE"/>
+    </logger>
+
+    <!-- JTA/トランザクションの詳細を追いたい場合に有効化しやすいよう明示しておく -->
+    <logger name="org.springframework.transaction" level="INFO"/>
+    <logger name="org.springframework.jdbc.core" level="INFO"/>
+
+    <!-- root: コンソール・サーバログ（EAP 形式・全体）・エラーログ（ERROR のみ） -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="SERVER_FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </root>
+
+</configuration>

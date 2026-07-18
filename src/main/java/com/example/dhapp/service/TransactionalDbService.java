@@ -43,6 +43,8 @@ public class TransactionalDbService {
     @Transactional
     public void insertIntoBothDatabases(DemoRequest request, String requestId) {
         log.info("[2PC] transaction begin. requestId={}", requestId);
+        log.debug("[2PC] INSERT SQL={} | params: sessionId={}, userId={}, failMode={}",
+                INSERT_SQL, request.getSessionId(), request.getUserId(), request.getFailMode());
 
         int rows1 = dhcomapJdbcTemplate.update(INSERT_SQL,
                 requestId, request.getSessionId(), request.getUserId(), request.getMessage());

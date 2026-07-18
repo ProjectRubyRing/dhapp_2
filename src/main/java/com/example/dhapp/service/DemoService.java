@@ -41,13 +41,17 @@ public class DemoService {
 
     public DemoResponse execute(DemoRequest request) {
         String requestId = UUID.randomUUID().toString();
-        log.info("execute start. requestId={}, sessionId={}", requestId, request.getSessionId());
+        log.info("execute start. requestId={}, sessionId={}, userId={}", requestId, request.getSessionId(), request.getUserId());
 
         // 1) Valkey へダミーセッション保存
+        log.debug("[step 1/3] saving session to Valkey. requestId={}", requestId);
         String sessionKey = valkeySessionService.saveSession(request, requestId);
+        log.debug("[step 1/3] Valkey session saved. requestId={}, sessionKey={}", requestId, sessionKey);
 
         // 2)-4) DHCOMAP / DHINFAP への 2PC INSERT（例外時はここで両方ロールバックされ、上位に伝播）
+        log.debug("[step 2/3] starting 2PC INSERT into DHCOMAP/DHINFAP. requestId={}", requestId);
         transactionalDbService.insertIntoBothDatabases(request, requestId);
+        log.debug("[step 2/3] 2PC INSERT committed. requestId={}", requestId);
 
         DemoResponse response = new DemoResponse();
         response.setRequestId(requestId);
@@ -56,6 +60,7 @@ public class DemoService {
         response.setDhinfapInserted(true);
 
         // 5) 外部 REST API 呼び出し（DB コミット後）
+        log.debug("[step 3/3] calling external REST API. requestId={}", requestId);
         try {
             int externalStatus = externalApiClient.callExternalApi(request, requestId);
             response.setExternalApiStatus(externalStatus);

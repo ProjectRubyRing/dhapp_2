@@ -34,8 +34,21 @@ public class DemoController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<DemoResponse> execute(@Valid @RequestBody DemoRequest request) {
-        log.info("POST /api/demo/execute received. sessionId={}", request.getSessionId());
+        long startedAt = System.currentTimeMillis();
+        log.info("POST /api/demo/execute received. sessionId={}, userId={}, failMode={}",
+                request.getSessionId(), request.getUserId(), request.getFailMode());
+        log.debug("POST /api/demo/execute request body detail. sessionId={}, userId={}, messageLen={}, failMode={}",
+                request.getSessionId(), request.getUserId(),
+                request.getMessage() == null ? 0 : request.getMessage().length(), request.getFailMode());
+
         DemoResponse response = demoService.execute(request);
+
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        log.info("POST /api/demo/execute done. requestId={}, status={}, dhcomapInserted={}, dhinfapInserted={}, "
+                        + "externalApiStatus={}, sessionKey={}, elapsedMs={}",
+                response.getRequestId(), response.getStatus(), response.isDhcomapInserted(),
+                response.isDhinfapInserted(), response.getExternalApiStatus(),
+                response.getSessionKey(), elapsedMs);
         return ResponseEntity.ok(response);
     }
 }

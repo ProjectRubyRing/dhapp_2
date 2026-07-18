@@ -66,3 +66,57 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/db/execute \
   -H 'Content-Type: application/json' \
   -d '{"sessionId":"rb-001","userId":"user-001","message":"hello","failMode":"AFTER_DHINFAP"}'
 ```
+
+## ログ出力
+
+各機能（demo / db / cache / external）は、REST API で処理した内容（リクエスト内容・処理ステップ・
+レスポンス・処理時間）を詳細にログへ出力する。出力先・フォーマットは
+`src/main/resources/logback-spring.xml` で構成し、出力ルートは **環境変数 `LOG_OUT_DIR`** で指定する。
+
+> WildFly(JBoss EAP) デプロイ時は `jboss-deployment-structure.xml` で logging サブシステムを除外して
+> いるため、ログ出力は war 内の Logback（Spring Boot 標準）が担う。
+
+| ファイル | パス | 内容 |
+|---|---|---|
+| アプリログ | `${LOG_OUT_DIR}/application.log` | 各 REST API 機能の処理内容を DEBUG まで詳細に記録 |
+| エラーログ | `${LOG_OUT_DIR}/error.log` | ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用） |
+| サーバログ | `${LOG_OUT_DIR}/mid/server.log` | JBoss EAP のサーバログ相当（EAP 既定フォーマット・フレームワーク含む全体） |
+
+`LOG_OUT_DIR` 未設定時はカレントディレクトリ配下 `./logs` を使う。指定例:
+
+```
+# Linux/WildFly
+export LOG_OUT_DIR=/var/log/dhapp
+```
+
+### error.log（CloudWatch Agent マルチライン検証）
+
+`error.log` には ERROR レベルのログのみが、標準の Java 例外スタックトレース形式
+（`Caused by:` / `... N more` を含む複数行）で出力される。各エントリは必ず先頭がタイムスタンプで
+始まるため、CloudWatch Agent 側で次のように設定すればスタックトレース全体を 1 イベントとして
+扱えることを確認できる。
+
+```
+[/var/log/dhapp/error.log]
+multi_line_start_pattern = "^\d{4}-\d{2}-\d{2}"
+```
+
+検証用に、意図的にネストした例外（Caused by を 2 段含む）を error.log へ出力するテスト API を用意している
+（HTTP 500 にはならず、error.log への書き込みのみを行う）:
+
+```
+# 1 件出力
+curl -i -X POST http://localhost:8080/iwinmichl/api/log/error-test
+
+# 複数件（区切り確認用。最大 100）
+curl -i -X POST "http://localhost:8080/iwinmichl/api/log/error-test?count=5"
+```
+
+なお、DB API の 2PC ロールバック検証（`failMode`）でも `DemoException` のスタックトレースが
+`error.log` に出力される。
+
+### server.log
+
+`${LOG_OUT_DIR}/mid/server.log` は JBoss EAP の standalone server.log 既定フォーマット
+（`%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n` 相当）で、アプリだけでなく
+Spring/WildFly 由来のログを含む全体を記録する。`mid` ディレクトリは自動作成される。

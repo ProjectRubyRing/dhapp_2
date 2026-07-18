@@ -35,10 +35,18 @@ app:
     connect-timeout-ms: ${EXTERNAL_API_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${EXTERNAL_API_READ_TIMEOUT_MS:5000}
 
+# ===== ログ出力 =====
+# ファイル出力先・フォーマットは src/main/resources/logback-spring.xml で構成する。
+# 出力ルートは環境変数 LOG_OUT_DIR で指定する（未設定時は ./logs）。
+#   ${LOG_OUT_DIR}/application.log … 各 REST API 機能の処理内容を詳細に記録
+#   ${LOG_OUT_DIR}/error.log       … ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用）
+#   ${LOG_OUT_DIR}/mid/server.log  … JBoss EAP サーバログ相当（EAP 既定フォーマット・全体）
+# ここでのレベル設定は logback-spring.xml のロガー設定と併せて有効になる。
 logging:
   level:
     root: INFO
-    com.example.dhapp: INFO
+    # 各機能の処理内容を詳細に出力するため DEBUG（application.log に詳細が載る）
+    com.example.dhapp: DEBUG
     # JTA/トランザクションの詳細を見たい場合は DEBUG に上げる
     org.springframework.transaction: INFO
     org.springframework.jdbc.core: INFO

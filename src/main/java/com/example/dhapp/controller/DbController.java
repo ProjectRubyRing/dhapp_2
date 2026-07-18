@@ -41,8 +41,13 @@ public class DbController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<DbResponse> execute(@Valid @RequestBody DemoRequest request) {
+        long startedAt = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
-        log.info("POST /api/db/execute received. requestId={}, sessionId={}", requestId, request.getSessionId());
+        log.info("POST /api/db/execute received. requestId={}, sessionId={}, userId={}, failMode={}",
+                requestId, request.getSessionId(), request.getUserId(), request.getFailMode());
+        log.debug("POST /api/db/execute request body detail. requestId={}, sessionId={}, userId={}, messageLen={}, failMode={}",
+                requestId, request.getSessionId(), request.getUserId(),
+                request.getMessage() == null ? 0 : request.getMessage().length(), request.getFailMode());
 
         // 2PC INSERT。例外時は両方ロールバックされ、GlobalExceptionHandler が 500 を返す。
         transactionalDbService.insertIntoBothDatabases(request, requestId);
@@ -53,7 +58,9 @@ public class DbController {
         response.setDhcomapInserted(true);
         response.setDhinfapInserted(true);
 
-        log.info("POST /api/db/execute done. requestId={}", requestId);
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        log.info("POST /api/db/execute done. requestId={}, status={}, dhcomapInserted={}, dhinfapInserted={}, elapsedMs={}",
+                requestId, response.getStatus(), response.isDhcomapInserted(), response.isDhinfapInserted(), elapsedMs);
         return ResponseEntity.ok(response);
     }
 }
