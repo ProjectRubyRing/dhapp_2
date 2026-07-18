@@ -14,6 +14,18 @@
         "LoggerFactory is not a Logback LoggerContext but Logback is on the classpath"
         で失敗する。
 
+    - ログ系モジュールを明示除外 (<exclusions>):
+        logging サブシステムを除外しても、EAP のバージョンによっては各デプロイに
+        暗黙で追加されるログ系モジュール依存（org.slf4j / org.jboss.logging など）が
+        残る。その場合コンテナ側の古い slf4j-api(1.7 系) やバインディングが war 内の
+        slf4j-api 2.x + Logback 1.5.x より優先され、Logback の初期化が
+        NoSuchMethodError / LinkageError で失敗する。これが Spring Boot 側の
+            "Logging system failed to initialize using configuration from 'null'"
+            "IllegalStateException: could not initialize Logback logging from
+             classpath:logback-spring.xml"
+        の正体。war 内蔵の slf4j+Logback だけを使わせるため、以下のモジュールを
+        デプロイのクラスローダから見えないように除外する。
+
     XA データソース／JTA は WildFly コアの datasources / transactions サブシステムが
     提供するものであり、ここでは除外しない。
 -->
@@ -25,5 +37,20 @@
             <subsystem name="jpa"/>
             <subsystem name="logging"/>
         </exclude-subsystems>
+
+        <!--
+            コンテナが暗黙追加するログ系モジュールを除外し、war 内の
+            slf4j-api 2.x + Logback 1.5.x を唯一のバインディングにする。
+        -->
+        <exclusions>
+            <module name="org.slf4j"/>
+            <module name="org.slf4j.impl"/>
+            <module name="org.slf4j.ext"/>
+            <module name="org.jboss.logging"/>
+            <module name="org.jboss.logmanager"/>
+            <module name="org.jboss.logging.jul-to-slf4j-stub"/>
+            <module name="org.apache.commons.logging"/>
+            <module name="org.apache.log4j"/>
+        </exclusions>
     </deployment>
 </jboss-deployment-structure>
