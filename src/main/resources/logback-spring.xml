@@ -20,6 +20,9 @@
     <!-- 出力ルートディレクトリ（環境変数 LOG_OUT_DIR）。未設定ならカレント配下 ./logs -->
     <property name="LOG_OUT_DIR" value="${LOG_OUT_DIR:-logs}"/>
 
+    <!-- データ出力ルートディレクトリ（環境変数 DATA_OUTPUT_DIR）。未設定ならカレント配下 ./data -->
+    <property name="DATA_OUTPUT_DIR" value="${DATA_OUTPUT_DIR:-data}"/>
+
     <!-- アプリログ用パターン（詳細・requestId 追跡しやすい形式） -->
     <property name="APP_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{48} - %msg%n%ex"/>
@@ -105,11 +108,182 @@
     </appender>
 
     <!--
-        アプリ本体（各 REST API 機能）は DEBUG まで詳細に出力し、専用の application.log に記録。
+        ===== 各 REST アプリの処理内容ログ（複数ファイル・同一内容） =====
+        各 REST API（demo / db / cache / external）が処理した内容（リクエスト・処理ステップ・
+        レスポンス・処理時間）を、以下の各ファイルへ「全て同じ内容」で必ず出力する。
+        いずれも application.log と同じ APP_PATTERN・DEBUG まで詳細に記録する。
+
+          keax0003.log      xxxxxxxxxx.err   accesslog        tracelog
+          dbiolog           inputmsglog      outputmsglog     asyncdriver.log
+    -->
+    <appender name="KEAX_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/keax0003.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/keax0003.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ERR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/xxxxxxxxxx.err</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/xxxxxxxxxx.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/accesslog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/accesslog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="TRACE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/tracelog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/tracelog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="DBIO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/dbiolog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/dbiolog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="INPUTMSG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/inputmsglog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/inputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="OUTPUTMSG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/outputmsglog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/outputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNCDRIVER_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/asyncdriver.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/asyncdriver.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+        ===== mid ディレクトリ配下に出力するログ: LOG_OUT_DIR/mid/gc.log =====
+        server.log（上で定義済み）と同様、mid ディレクトリを挟んで出力する。
+        内容は他ファイルと同じ処理内容。mid ディレクトリは自動作成される。
+    -->
+    <appender name="GC_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/mid/gc.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/mid/gc.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+        ===== データ出力ディレクトリへのログ: DATA_OUTPUT_DIR/dummy.pdf =====
+        環境変数 DATA_OUTPUT_DIR 配下に、REST アプリのログを合わせて dummy.pdf という名前で出力する。
+        （内容は他ファイルと同じ処理内容。拡張子が .pdf でも中身はテキストのログ。）
+    -->
+    <appender name="DUMMY_PDF_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${DATA_OUTPUT_DIR}/dummy.pdf</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${DATA_OUTPUT_DIR}/dummy.%d{yyyy-MM-dd}.%i.pdf</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+        アプリ本体（各 REST API 機能）は DEBUG まで詳細に出力する。
+        application.log に加え、上記すべてのファイル（DATA_OUTPUT_DIR/dummy.pdf を含む）へ
+        同じ処理内容を必ず出力する。
         additivity=true のまま root にも伝播させ、server.log（全体）と error.log（ERROR のみ）にも載せる。
     -->
     <logger name="com.example.dhapp" level="DEBUG">
         <appender-ref ref="APP_FILE"/>
+        <appender-ref ref="KEAX_FILE"/>
+        <appender-ref ref="ERR_FILE"/>
+        <appender-ref ref="ACCESS_FILE"/>
+        <appender-ref ref="TRACE_FILE"/>
+        <appender-ref ref="DBIO_FILE"/>
+        <appender-ref ref="INPUTMSG_FILE"/>
+        <appender-ref ref="OUTPUTMSG_FILE"/>
+        <appender-ref ref="ASYNCDRIVER_FILE"/>
+        <appender-ref ref="GC_FILE"/>
+        <appender-ref ref="DUMMY_PDF_FILE"/>
     </logger>
 
     <!-- JTA/トランザクションの詳細を追いたい場合に有効化しやすいよう明示しておく -->

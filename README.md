@@ -82,6 +82,34 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/db/execute \
 | エラーログ | `${LOG_OUT_DIR}/error.log` | ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用） |
 | サーバログ | `${LOG_OUT_DIR}/mid/server.log` | JBoss EAP のサーバログ相当（EAP 既定フォーマット・フレームワーク含む全体） |
 
+各 REST API（demo / db / cache / external）の処理内容は、上記に加えて以下のファイルにも
+**すべて同じ内容**で必ず出力される（`application.log` と同じ処理内容ログ）。`mid` を挟むものは
+`mid` ディレクトリ配下に出力する（ディレクトリは自動作成）。
+
+| ファイル | パス |
+|---|---|
+| keax0003.log | `${LOG_OUT_DIR}/keax0003.log` |
+| xxxxxxxxxx.err | `${LOG_OUT_DIR}/xxxxxxxxxx.err` |
+| accesslog | `${LOG_OUT_DIR}/accesslog` |
+| tracelog | `${LOG_OUT_DIR}/tracelog` |
+| dbiolog | `${LOG_OUT_DIR}/dbiolog` |
+| inputmsglog | `${LOG_OUT_DIR}/inputmsglog` |
+| outputmsglog | `${LOG_OUT_DIR}/outputmsglog` |
+| asyncdriver.log | `${LOG_OUT_DIR}/asyncdriver.log` |
+| gc.log | `${LOG_OUT_DIR}/mid/gc.log` |
+
+さらに、環境変数 **`DATA_OUTPUT_DIR`** で指定したデータ出力ディレクトリにも、REST アプリのログを
+合わせて `dummy.pdf` という名前で出力する（内容は他ファイルと同じ処理内容。未設定時は `./data`）。
+
+| ファイル | パス |
+|---|---|
+| dummy.pdf | `${DATA_OUTPUT_DIR}/dummy.pdf` |
+
+```
+# Linux/WildFly
+export DATA_OUTPUT_DIR=/var/data/dhapp
+```
+
 `LOG_OUT_DIR` 未設定時はカレントディレクトリ配下 `./logs` を使う。指定例:
 
 ```
