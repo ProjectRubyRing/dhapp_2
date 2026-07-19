@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClientException;
 
 import com.example.dhapp.dto.DemoRequest;
 import com.example.dhapp.dto.ExternalApiResponse;
+import com.example.dhapp.service.DummyPdfService;
 import com.example.dhapp.service.ExternalApiClient;
 
 /**
@@ -34,9 +35,11 @@ public class ExternalApiController {
     private static final Logger log = LoggerFactory.getLogger(ExternalApiController.class);
 
     private final ExternalApiClient externalApiClient;
+    private final DummyPdfService dummyPdfService;
 
-    public ExternalApiController(ExternalApiClient externalApiClient) {
+    public ExternalApiController(ExternalApiClient externalApiClient, DummyPdfService dummyPdfService) {
         this.externalApiClient = externalApiClient;
+        this.dummyPdfService = dummyPdfService;
     }
 
     @PostMapping(value = "/execute",
@@ -50,6 +53,9 @@ public class ExternalApiController {
         log.debug("POST /api/external/execute request body detail. requestId={}, sessionId={}, userId={}, messageLen={}",
                 requestId, request.getSessionId(), request.getUserId(),
                 request.getMessage() == null ? 0 : request.getMessage().length());
+
+        // 各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ "DUMMY" と記載した PDF を生成する。
+        dummyPdfService.createDummyPdf("external");
 
         ExternalApiResponse response = new ExternalApiResponse();
         response.setRequestId(requestId);

@@ -61,6 +61,18 @@
         </dependency>
 
         <!--
+            PDF 生成ライブラリ（Apache PDFBox）。純 Java 実装で外部フォント不要
+            （標準 14 フォントを使用）。各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ
+            "DUMMY" と記載した本物の PDF（dummy.pdf）を生成するために使用する。
+            PDFBox 3.x はロギングに SLF4J を使うため、既存の Logback と競合しない。
+        -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.3</version>
+        </dependency>
+
+        <!--
             JTA API (jakarta.transaction)。WildFly が実装を提供するため provided。
             JtaTransactionManager / UserTransaction はランタイムにコンテナのものを使う。
         -->

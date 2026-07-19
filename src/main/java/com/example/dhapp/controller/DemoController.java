@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.dhapp.dto.DemoRequest;
 import com.example.dhapp.dto.DemoResponse;
 import com.example.dhapp.service.DemoService;
+import com.example.dhapp.service.DummyPdfService;
 
 /**
  * POST /api/demo/execute
@@ -25,9 +26,11 @@ public class DemoController {
     private static final Logger log = LoggerFactory.getLogger(DemoController.class);
 
     private final DemoService demoService;
+    private final DummyPdfService dummyPdfService;
 
-    public DemoController(DemoService demoService) {
+    public DemoController(DemoService demoService, DummyPdfService dummyPdfService) {
         this.demoService = demoService;
+        this.dummyPdfService = dummyPdfService;
     }
 
     @PostMapping(value = "/execute",
@@ -40,6 +43,9 @@ public class DemoController {
         log.debug("POST /api/demo/execute request body detail. sessionId={}, userId={}, messageLen={}, failMode={}",
                 request.getSessionId(), request.getUserId(),
                 request.getMessage() == null ? 0 : request.getMessage().length(), request.getFailMode());
+
+        // 各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ "DUMMY" と記載した PDF を生成する。
+        dummyPdfService.createDummyPdf("demo");
 
         DemoResponse response = demoService.execute(request);
 

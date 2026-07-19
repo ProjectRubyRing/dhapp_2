@@ -20,8 +20,12 @@
     <!-- 出力ルートディレクトリ（環境変数 LOG_OUT_DIR）。未設定ならカレント配下 ./logs -->
     <property name="LOG_OUT_DIR" value="${LOG_OUT_DIR:-logs}"/>
 
-    <!-- データ出力ルートディレクトリ（環境変数 DATA_OUTPUT_DIR）。未設定ならカレント配下 ./data -->
-    <property name="DATA_OUTPUT_DIR" value="${DATA_OUTPUT_DIR:-data}"/>
+    <!--
+        データ出力ルートディレクトリ（環境変数 DATA_OUTPUT_DIR、未設定ならカレント配下 ./data）配下の
+        dummy.pdf は、以前はここ（Logback アペンダ）で処理内容ログをテキストとして出力していたが、
+        現在は Apache PDFBox で「DUMMY」を書き込んだ本物の PDF を各 REST API 呼び出し時に生成する
+        （com.example.dhapp.service.DummyPdfService）。そのため Logback 側の dummy.pdf 出力は行わない。
+    -->
 
     <!-- アプリログ用パターン（詳細・requestId 追跡しやすい形式） -->
     <property name="APP_PATTERN"
@@ -248,28 +252,9 @@
     </appender>
 
     <!--
-        ===== データ出力ディレクトリへのログ: DATA_OUTPUT_DIR/dummy.pdf =====
-        環境変数 DATA_OUTPUT_DIR 配下に、REST アプリのログを合わせて dummy.pdf という名前で出力する。
-        （内容は他ファイルと同じ処理内容。拡張子が .pdf でも中身はテキストのログ。）
-    -->
-    <appender name="DUMMY_PDF_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${DATA_OUTPUT_DIR}/dummy.pdf</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${DATA_OUTPUT_DIR}/dummy.%d{yyyy-MM-dd}.%i.pdf</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder>
-            <pattern>${APP_PATTERN}</pattern>
-            <charset>UTF-8</charset>
-        </encoder>
-    </appender>
-
-    <!--
         アプリ本体（各 REST API 機能）は DEBUG まで詳細に出力する。
-        application.log に加え、上記すべてのファイル（DATA_OUTPUT_DIR/dummy.pdf を含む）へ
-        同じ処理内容を必ず出力する。
+        application.log に加え、上記すべてのファイルへ同じ処理内容を必ず出力する。
+        （DATA_OUTPUT_DIR/dummy.pdf は Logback ではなく DummyPdfService が PDFBox で生成する。）
         additivity=true のまま root にも伝播させ、server.log（全体）と error.log（ERROR のみ）にも載せる。
     -->
     <logger name="com.example.dhapp" level="DEBUG">
@@ -283,7 +268,6 @@
         <appender-ref ref="OUTPUTMSG_FILE"/>
         <appender-ref ref="ASYNCDRIVER_FILE"/>
         <appender-ref ref="GC_FILE"/>
-        <appender-ref ref="DUMMY_PDF_FILE"/>
     </logger>
 
     <!-- JTA/トランザクションの詳細を追いたい場合に有効化しやすいよう明示しておく -->

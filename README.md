@@ -98,12 +98,15 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/db/execute \
 | asyncdriver.log | `${LOG_OUT_DIR}/asyncdriver.log` |
 | gc.log | `${LOG_OUT_DIR}/mid/gc.log` |
 
-さらに、環境変数 **`DATA_OUTPUT_DIR`** で指定したデータ出力ディレクトリにも、REST アプリのログを
-合わせて `dummy.pdf` という名前で出力する（内容は他ファイルと同じ処理内容。未設定時は `./data`）。
+さらに、環境変数 **`DATA_OUTPUT_DIR`** で指定したデータ出力ディレクトリに、各 REST API
+（demo / db / cache / external / log）の呼び出しごとに `dummy.pdf` を生成する（未設定時は `./data`）。
+この `dummy.pdf` はログのテキストではなく、**Apache PDFBox で生成した本物の PDF**（`DUMMY` という
+文字列を記載）で、`com.example.dhapp.service.DummyPdfService` が呼び出しのたびに上書き作成する。
+ディレクトリが無い場合は自動作成する。
 
-| ファイル | パス |
-|---|---|
-| dummy.pdf | `${DATA_OUTPUT_DIR}/dummy.pdf` |
+| ファイル | パス | 内容 |
+|---|---|---|
+| dummy.pdf | `${DATA_OUTPUT_DIR}/dummy.pdf` | PDFBox 生成の PDF（`DUMMY` を記載） |
 
 ```
 # Linux/WildFly
