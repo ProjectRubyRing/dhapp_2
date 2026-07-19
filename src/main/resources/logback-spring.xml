@@ -28,9 +28,14 @@
         JBoss EAP standalone の server.log 既定パターンに合わせる。
         EAP:  %d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n
         （ミリ秒がカンマ区切り、レベル・カテゴリ・スレッド・メッセージ・例外）
+
+        注意: Logback の %d{...} はカンマをオプション区切り（第2引数=タイムゾーンID）と
+        解釈するため、日付パターン自体にカンマを含める場合は全体をダブルクォートで囲む。
+        囲まないと Logback 1.5 系では ZoneRulesException: Unknown time-zone ID: SSS で
+        初期化に失敗する。
     -->
     <property name="SERVER_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss,SSS} %-5level [%logger] (%thread) %msg%n%ex"/>
+              value='%d{"yyyy-MM-dd HH:mm:ss,SSS"} %-5level [%logger] (%thread) %msg%n%ex'/>
 
     <!-- ===== コンソール（開発・コンテナ標準出力用） ===== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
