@@ -19,6 +19,93 @@ mvn -DskipTests clean package
 
 コンテキストパスは `/iwinmichl` なので、エンドポイントは `http://host:8080/iwinmichl/api/demo/execute`。
 
+## MySQL 8.4 / Connector/J 9.x で 2PC を動かすための必須設定
+
+MySQL 8.4.7 + Connector/J 9.7.0 の組み合わせでは、**WildFly の XA データソースに
+`same-rm-override=false` を設定しないと 2PC が必ず失敗する**。設定が無いと以下の例外が出る。
+
+```
+java.sql.SQLException: jakarta.resource.ResourceException:
+    IJ000457: Unchecked throwable in managedConnectionReconnected()
+java.sql.SQLException: XAER_INVAL: Invalid arguments (or unsupported command)
+```
+
+### 原因
+
+1. Connector/J **9.5.0** で `XAResource.isSameRM()` の判定が変更された（Bug #18403804）。
+   それまで比較していた**スキーマ名が比較対象から外れ、ホストとポートだけ**で同一リソース
+   マネージャか判定するようになった。
+2. DHCOMAP と DHINFAP が同じ MySQL インスタンス上にあると、2 つの XA データソースが
+   `isSameRM() == true` と判定される。
+3. WildFly のトランザクションマネージャ(Narayana)は「同じ RM ならブランチを結合できる」と
+   判断し、2 本目の enlist で `XAResource.start(xid, TMJOIN)` を呼ぶ。
+4. Connector/J は `XA START <xid> JOIN` を送信するが、**MySQL は JOIN / RESUME を
+   サポートしていない**ため `ERROR 1398 (XAE05) XAER_INVAL` を返す。
+5. その `XAException` が IronJacamar の `enlistResource()` から抜け、
+   `IJ000457: Unchecked throwable in managedConnectionReconnected()` になる。
+
+つまり 2 つの例外は同一原因で、Connector/J 8.4.0 では動いていたものが 9.5.0 以降で
+表面化する。JOIN 非対応は MySQL サーバ側の仕様であり `my.cnf` では変更できないため、
+**修正はデータソース設定側で行う**。
+
+### 修正内容
+
+| 対象 | 設定 | 理由 |
+|---|---|---|
+| WildFly XA DS（両方） | `same-rm-override=false` | **本命の修正**。`isSameRM()` を常に false にしてブランチ結合を抑止し、別ブランチ（同一 gtrid・別 bqual）として 2PC させる |
+| WildFly XA DS（両方） | `no-tx-separate-pool=true` | 起動時 DDL（`SchemaInitializer`）などトランザクション外の利用とトランザクション内の利用で物理プールを分ける |
+| WildFly XA DS（両方） | `PinGlobalTxToPhysicalConnection` を**削除** | Connector/J 8/9 の `MysqlXADataSource` にセッターが無く適用されない。有効になると `SuspendableXAConnection`（Xid→物理コネクションの static Map）が使われ JCA プールと二重管理になる。JOIN 問題も解決しない |
+| MySQL | `GRANT XA_RECOVER_ADMIN ON *.* TO ...` | MySQL 8.0 以降 `XA RECOVER` に必要。無いと WildFly の periodic recovery が in-doubt ブランチを回収できない |
+| MySQL | `xa_detach_on_prepare=ON`（8.0.29 以降の既定のまま） | `XA PREPARE` 後にブランチをセッションから切り離す。コネクションプール／リカバリと相性が良い |
+
+適用スクリプトはリポジトリに同梱している。
+
+```
+# 既存サーバへ修正だけを適用（適用後 reload される）
+$JBOSS_HOME/bin/jboss-cli.sh --connect --file=wildfly/fix-xa-2pc.cli
+
+# 新規構築（ドライバ登録 + XA データソース 2 つ）
+$JBOSS_HOME/bin/jboss-cli.sh --file=wildfly/register-mysql-driver.cli
+$JBOSS_HOME/bin/jboss-cli.sh --file=wildfly/configure-wildfly.cli
+
+# MySQL 側（スキーマ・ユーザー・XA_RECOVER_ADMIN）
+mysql -h <host> -u root -p < mysql/init-xa.sql
+```
+
+`standalone.xml` を直接編集する場合は、各 `<xa-datasource>` に次を追加する。
+
+```xml
+<xa-pool>
+    <no-tx-separate-pools>true</no-tx-separate-pools>
+</xa-pool>
+<is-same-rm-override>false</is-same-rm-override>
+```
+
+### 起動時の自己診断
+
+`XaSelfCheck` が起動時に、1 つの JTA トランザクション内で DHCOMAP / DHINFAP の両方を
+enlist できるかを `SELECT 1` だけで検証し、必ずロールバックする（データは変更しない）。
+失敗した場合は原因と対処コマンドを ERROR ログに出力する（起動自体は止めない）。
+不要なら `app.xa.self-check.enabled=false` で無効化できる。
+
+```
+[2PC][self-check] OK. Both DHCOMAP and DHINFAP were enlisted as separate XA branches in a single JTA transaction.
+```
+
+XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=true` を付けると
+`XA START` / `XA END` / `XA PREPARE` / `XA COMMIT` がドライバのログに出る。
+
+### 補足
+
+- 2 つの DB が**同一 MySQL インスタンス上の別スキーマ**なら、本来 XA は不要
+  （1 本のローカルトランザクションで両スキーマへ INSERT すれば原子性は確保できる）。
+  本アプリは 2PC の動作確認が目的なので XA を使っている。
+- 2 つの DB が**別ホスト**なら `isSameRM()` は false になるため、この問題は起きない。
+- XA/2PC は RDS Proxy 経由では正しく動作しない。XA データソースの接続先は
+  Aurora の Writer エンドポイントを直接指定すること。
+- MySQL 8.4 では `mysql_native_password` が既定で無効。既定の `caching_sha2_password` を
+  使い、非 TLS 接続の場合のみ JDBC URL に `allowPublicKeyRetrieval=true` を付ける。
+
 ## API 一覧
 
 | API | パス | 内容 |

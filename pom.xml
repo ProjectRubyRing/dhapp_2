@@ -85,7 +85,13 @@
         <!--
             MySQL Connector/J はアプリの war には含めない。
             WildFly のモジュール（com.mysql）として登録し、XA データソースを
-            WildFly 側で構成する。バージョンは 8.4.0 を使用（9.x も互換）。
+            WildFly 側で構成する（wildfly/register-mysql-driver.cli）。
+            MySQL 8.4.7 に対しては Connector/J 9.7.0 を使用する。
+
+            注意: Connector/J 9.5.0 以降は XAResource.isSameRM() がスキーマ名を
+            比較しなくなった（Bug #18403804）。DHCOMAP と DHINFAP が同一 MySQL
+            インスタンス上にある場合、XA データソースに same-rm-override=false を
+            設定しないと 2PC が XAER_INVAL / IJ000457 で失敗する。README.md 参照。
         -->
 
         <!-- テスト -->

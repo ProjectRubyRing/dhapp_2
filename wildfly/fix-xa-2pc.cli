@@ -1,0 +1,48 @@
+# =====================================================================
+# 既に XA データソースが構成済みの WildFly / JBoss EAP に対して、
+# MySQL 8.4 + Connector/J 9.5.0 以降で 2PC が失敗する問題の修正のみを適用する。
+#
+#   java.sql.SQLException: jakarta.resource.ResourceException:
+#       IJ000457: Unchecked throwable in managedConnectionReconnected()
+#   java.sql.SQLException: XAER_INVAL: Invalid arguments (or unsupported command)
+#
+# 実行（起動中のサーバへ適用。適用後に reload される）:
+#   $JBOSS_HOME/bin/jboss-cli.sh --connect --file=fix-xa-2pc.cli
+#
+# 実行（サーバ未起動の standalone.xml を直接書き換える場合）:
+#   先頭の connect を消し、代わりに次の 1 行を入れて reload/exit を削る:
+#     embed-server --std-out=echo --server-config=standalone.xml
+#
+# 何をしているか:
+#   1) same-rm-override=false      … MySQL 未サポートの XA START ... JOIN を抑止（本命の修正）
+#   2) no-tx-separate-pool=true    … トランザクション内／外で物理プールを分離
+#   3) PinGlobalTxToPhysicalConnection プロパティを削除（Connector/J 8/9 では設定不可・有害）
+# 詳細は configure-wildfly.cli の冒頭コメントと README.md を参照。
+# =====================================================================
+
+connect
+
+# ============================ DHCOMAPXADS ============================
+# same-rm-override は IronJacamar の XAResourceWrapper が実装しているため、
+# wrap-xa-resource=true（既定値）でなければ効かない。
+/subsystem=datasources/xa-data-source=DHCOMAPXADS:write-attribute(name=wrap-xa-resource, value=true)
+/subsystem=datasources/xa-data-source=DHCOMAPXADS:write-attribute(name=same-rm-override, value=false)
+/subsystem=datasources/xa-data-source=DHCOMAPXADS:write-attribute(name=no-tx-separate-pool, value=true)
+
+if (outcome == success) of /subsystem=datasources/xa-data-source=DHCOMAPXADS/xa-datasource-properties=PinGlobalTxToPhysicalConnection:read-resource
+    /subsystem=datasources/xa-data-source=DHCOMAPXADS/xa-datasource-properties=PinGlobalTxToPhysicalConnection:remove
+end-if
+
+# ============================ DHINFAPXADS ============================
+/subsystem=datasources/xa-data-source=DHINFAPXADS:write-attribute(name=wrap-xa-resource, value=true)
+/subsystem=datasources/xa-data-source=DHINFAPXADS:write-attribute(name=same-rm-override, value=false)
+/subsystem=datasources/xa-data-source=DHINFAPXADS:write-attribute(name=no-tx-separate-pool, value=true)
+
+if (outcome == success) of /subsystem=datasources/xa-data-source=DHINFAPXADS/xa-datasource-properties=PinGlobalTxToPhysicalConnection:read-resource
+    /subsystem=datasources/xa-data-source=DHINFAPXADS/xa-datasource-properties=PinGlobalTxToPhysicalConnection:remove
+end-if
+
+# 反映（データソースの再起動が必要なため reload する）
+reload
+
+exit

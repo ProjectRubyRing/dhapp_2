@@ -1,0 +1,132 @@
+# =====================================================================
+# WildFly / JBoss EAP に MySQL XA ドライバと 2 つの XA データソースを登録する。
+#
+# 実行（サーバ未起動・standalone 構成を直接書き換え）:
+#   $JBOSS_HOME/bin/jboss-cli.sh --file=configure-wildfly.cli
+#
+# 接続情報（URL / ユーザー / パスワード）は WildFly 起動時に環境変数から解決される。
+#   ${env.XXX:default} は WildFly の式解決機能。docker run -e XXX=... で上書きする。
+#
+# ---------------------------------------------------------------------
+# 【最重要】same-rm-override=false は MySQL XA では必須
+# ---------------------------------------------------------------------
+# MySQL Connector/J 9.5.0 で isSameRM() の実装が変更され（Bug #18403804）、
+# 「ホスト＋ポート」だけで同一リソースマネージャか判定するようになった。
+# スキーマ名（DHCOMAP / DHINFAP）は比較対象から外されている。
+#
+#   → DHCOMAP と DHINFAP が同一 MySQL インスタンス上にある場合、
+#     2 つの XA データソースが isSameRM() == true と判定される。
+#   → Narayana(WildFly の TM) は「同じ RM ならブランチを結合できる」と判断し、
+#     2 本目の enlist で XAResource.start(xid, TMJOIN) を呼ぶ。
+#   → Connector/J は "XA START <xid> JOIN" を送信する。
+#   → MySQL は JOIN / RESUME を未サポートのため
+#     ERROR 1398 (XAE05) XAER_INVAL: Invalid arguments (or unsupported command) を返す。
+#   → その XAException が IronJacamar の enlistResource() から抜け、
+#     IJ000457: Unchecked throwable in managedConnectionReconnected() になる。
+#
+# same-rm-override=false を指定すると IronJacamar が isSameRM() を無条件に false と
+# 返すため、TM は 2 つを別ブランチ（同一 gtrid・別 bqual）として扱い、
+# 正しく 2 フェーズコミット（PREPARE 2 本 → COMMIT 2 本）される。
+#
+# ---------------------------------------------------------------------
+# 【注意】PinGlobalTxToPhysicalConnection は指定しない
+# ---------------------------------------------------------------------
+# Connector/J 8.x / 9.x の MysqlXADataSource / MysqlDataSource には
+# setPinGlobalTxToPhysicalConnection() が存在しない（JavaBean プロパティではない）ため、
+# xa-datasource-property として指定しても適用されない／DS 生成が失敗する。
+# また、この設定が有効になると SuspendableXAConnection が使われ、
+# Xid → 物理コネクションの static Map を JVM 全体で共有するようになるため、
+# JCA プールと二重管理になり不具合の原因になる。上記の JOIN 問題も解決しない
+# （JOIN を RESUME に読み替えて送るだけで、MySQL は RESUME も未サポート）。
+# どうしても必要な場合は URL のクエリパラメータで渡すこと。
+#
+# ---------------------------------------------------------------------
+# 【本番運用】
+# ---------------------------------------------------------------------
+# XA/2PC は RDS Proxy 経由では正しく動作しない（トランザクション境界で多重化され、
+# prepared ブランチを同一物理コネクションに固定できずリカバリも保証されない）。
+# XA データソースの URL は RDS Proxy ではなく Aurora の Writer エンドポイントを直接指定する。
+# =====================================================================
+
+# 未起動状態の standalone 構成を編集するため embed-server で起動
+embed-server --std-out=echo --server-config=standalone.xml
+
+# --- MySQL JDBC ドライバ（XA 対応）の登録 ---
+if (outcome != success) of /subsystem=datasources/jdbc-driver=mysql:read-resource
+    /subsystem=datasources/jdbc-driver=mysql:add( \
+        driver-name=mysql, \
+        driver-module-name=com.mysql, \
+        driver-class-name=com.mysql.cj.jdbc.Driver, \
+        driver-xa-datasource-class-name=com.mysql.cj.jdbc.MysqlXADataSource)
+end-if
+
+# 一括投入（途中で失敗したら全てロールバック）
+batch
+
+# ============================ DHCOMAP XA DataSource ============================
+xa-data-source add \
+    --name=DHCOMAPXADS \
+    --jndi-name=java:/jdbc/DHCOMAPXADS \
+    --driver-name=mysql \
+    --user-name=${env.DHCOMAP_DB_USER:dhcomap_user} \
+    --password=${env.DHCOMAP_DB_PASSWORD:__CHANGE_ME__} \
+    --recovery-username=${env.DHCOMAP_DB_USER:dhcomap_user} \
+    --recovery-password=${env.DHCOMAP_DB_PASSWORD:__CHANGE_ME__} \
+    --use-ccm=true \
+    --enabled=true \
+    --valid-connection-checker-class-name=org.jboss.jca.adapters.jdbc.extensions.mysql.MySQLValidConnectionChecker \
+    --exception-sorter-class-name=org.jboss.jca.adapters.jdbc.extensions.mysql.MySQLExceptionSorter \
+    --validate-on-match=true \
+    --background-validation=false
+
+# 接続 URL（XA/2PC のため Writer エンドポイント直結。RDS Proxy は不可）
+# XA コマンド（XA START/END/PREPARE/COMMIT）をログに出したい場合は
+# URL に &logXaCommands=true を追加する。
+/subsystem=datasources/xa-data-source=DHCOMAPXADS/xa-datasource-properties=URL:add( \
+    value=${env.DHCOMAP_DB_URL:jdbc:mysql://mysql:3306/DHCOMAP?sslMode=REQUIRED})
+
+# 【必須】MySQL は XA START ... JOIN を未サポートのため、ブランチ結合を無効化する。
+# これが無いと XAER_INVAL / IJ000457 が発生する（ファイル冒頭の解説を参照）。
+# same-rm-override は IronJacamar の XAResourceWrapper が実装しているため、
+# wrap-xa-resource=true（既定値）でなければ効かない。念のため明示する。
+/subsystem=datasources/xa-data-source=DHCOMAPXADS:write-attribute( \
+    name=wrap-xa-resource, value=true)
+/subsystem=datasources/xa-data-source=DHCOMAPXADS:write-attribute( \
+    name=same-rm-override, value=false)
+
+# トランザクション内で使うコネクションと、トランザクション外で使うコネクション
+# （本アプリでは SchemaInitializer の CREATE TABLE が該当）で物理プールを分ける。
+# 同一コネクションを跨いで使うと XA START が XAER_RMFAIL になることがある。
+/subsystem=datasources/xa-data-source=DHCOMAPXADS:write-attribute( \
+    name=no-tx-separate-pool, value=true)
+
+# ============================ DHINFAP XA DataSource ============================
+xa-data-source add \
+    --name=DHINFAPXADS \
+    --jndi-name=java:/jdbc/DHINFAPXADS \
+    --driver-name=mysql \
+    --user-name=${env.DHINFAP_DB_USER:dhinfap_user} \
+    --password=${env.DHINFAP_DB_PASSWORD:__CHANGE_ME__} \
+    --recovery-username=${env.DHINFAP_DB_USER:dhinfap_user} \
+    --recovery-password=${env.DHINFAP_DB_PASSWORD:__CHANGE_ME__} \
+    --use-ccm=true \
+    --enabled=true \
+    --valid-connection-checker-class-name=org.jboss.jca.adapters.jdbc.extensions.mysql.MySQLValidConnectionChecker \
+    --exception-sorter-class-name=org.jboss.jca.adapters.jdbc.extensions.mysql.MySQLExceptionSorter \
+    --validate-on-match=true \
+    --background-validation=false
+
+/subsystem=datasources/xa-data-source=DHINFAPXADS/xa-datasource-properties=URL:add( \
+    value=${env.DHINFAP_DB_URL:jdbc:mysql://mysql:3306/DHINFAP?sslMode=REQUIRED})
+
+/subsystem=datasources/xa-data-source=DHINFAPXADS:write-attribute( \
+    name=wrap-xa-resource, value=true)
+/subsystem=datasources/xa-data-source=DHINFAPXADS:write-attribute( \
+    name=same-rm-override, value=false)
+
+/subsystem=datasources/xa-data-source=DHINFAPXADS:write-attribute( \
+    name=no-tx-separate-pool, value=true)
+
+run-batch
+
+stop-embedded-server

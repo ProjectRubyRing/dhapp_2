@@ -1,0 +1,13 @@
+# =====================================================================
+# MySQL Connector/J を WildFly モジュール com.mysql として登録する。
+# 実行（サーバ未起動でも可・スタンドアロン）:
+#   $JBOSS_HOME/bin/jboss-cli.sh --file=register-mysql-driver.cli
+#
+# --resources にはコンテナ／EC2 内に配置した JDBC ドライバ jar の絶対パスを指定する。
+# MySQL 8.4.7 サーバに接続するため Connector/J 9.7.0 を使用する。
+#
+# 注意: Connector/J 9.5.0 以降は XAResource.isSameRM() がスキーマ名を見なくなった
+# （Bug #18403804）。同一 MySQL インスタンス上の 2 スキーマを XA データソースにする場合は
+# configure-wildfly.cli の same-rm-override=false が必須。
+# =====================================================================
+module add --name=com.mysql --resources=/opt/jdbc/mysql-connector-j-9.7.0.jar --dependencies=java.se

@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -18,8 +19,13 @@ import org.springframework.stereotype.Component;
  *
  * これにより「テーブルが無ければ作成、あればそのまま利用」という要求仕様を満たしつつ、
  * 2PC の健全性を保つ。
+ *
+ * なお、この DDL は XA データソースをトランザクション外で使う唯一の箇所である。
+ * トランザクション内で使う物理コネクションと混ざらないよう、WildFly 側の XA データソースには
+ * no-tx-separate-pool=true を設定すること（wildfly/configure-wildfly.cli 参照）。
  */
 @Component
+@Order(0)
 public class SchemaInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SchemaInitializer.class);
