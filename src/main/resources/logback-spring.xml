@@ -119,6 +119,7 @@
 
           keax0003.log      xxxxxxxxxx.err   accesslog        tracelog
           dbiolog           inputmsglog      outputmsglog     asyncdriver.log
+          authlog           connectinlog     connectoutlog    asyncdriver_xxxxx.err
     -->
     <appender name="KEAX_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_OUT_DIR}/keax0003.log</file>
@@ -232,6 +233,66 @@
         </encoder>
     </appender>
 
+    <appender name="AUTH_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/authlog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/authlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="CONNECTIN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/connectinlog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/connectinlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="CONNECTOUT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/connectoutlog</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/connectoutlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--
+        asyncdriver_xxxxx.err … xxxxxxxxxx.err と同様、拡張子 .err の固定ファイル名で出力する。
+        （xxxxx 部分はファイル名の一部としてそのまま扱う）
+    -->
+    <appender name="ASYNCDRIVER_ERR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_OUT_DIR}/asyncdriver_xxxxx.err</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_OUT_DIR}/asyncdriver_xxxxx.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${APP_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
     <!--
         ===== mid ディレクトリ配下に出力するログ: LOG_OUT_DIR/mid/gc.log =====
         server.log（上で定義済み）と同様、mid ディレクトリを挟んで出力する。
@@ -267,6 +328,10 @@
         <appender-ref ref="INPUTMSG_FILE"/>
         <appender-ref ref="OUTPUTMSG_FILE"/>
         <appender-ref ref="ASYNCDRIVER_FILE"/>
+        <appender-ref ref="AUTH_FILE"/>
+        <appender-ref ref="CONNECTIN_FILE"/>
+        <appender-ref ref="CONNECTOUT_FILE"/>
+        <appender-ref ref="ASYNCDRIVER_ERR_FILE"/>
         <appender-ref ref="GC_FILE"/>
     </logger>
 

@@ -183,6 +183,10 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/db/execute \
 | inputmsglog | `${LOG_OUT_DIR}/inputmsglog` |
 | outputmsglog | `${LOG_OUT_DIR}/outputmsglog` |
 | asyncdriver.log | `${LOG_OUT_DIR}/asyncdriver.log` |
+| authlog | `${LOG_OUT_DIR}/authlog` |
+| connectinlog | `${LOG_OUT_DIR}/connectinlog` |
+| connectoutlog | `${LOG_OUT_DIR}/connectoutlog` |
+| asyncdriver_xxxxx.err | `${LOG_OUT_DIR}/asyncdriver_xxxxx.err` |
 | gc.log | `${LOG_OUT_DIR}/mid/gc.log` |
 
 さらに、環境変数 **`DATA_OUTPUT_DIR`** で指定したデータ出力ディレクトリに、各 REST API
