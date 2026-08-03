@@ -114,8 +114,12 @@ XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=
 | DB のみ | `POST /api/db/execute` | DHCOMAP/DHINFAP への 2PC INSERT のみ（`failMode` でロールバック検証可） |
 | ElastiCache のみ | `POST /api/cache/execute` | Valkey へ保存し、読み戻した内容を返す |
 | 外部 API のみ | `POST /api/external/execute` | 設定 URL へ HTTP POST し結果を返す |
+| ファイルアップロード | `POST /api/file/upload` | multipart で受け取ったファイルを AP サーバのテンポラリフォルダへ保存し、保存場所とサイズをログ・レスポンスに出力 |
+| アップロード設定確認 | `GET /api/file/upload-info` | 保存先テンポラリフォルダと適用中のサイズ上限を返す |
+| エラーログ検証 | `POST /api/log/error-test` | ネストした例外を `error.log` に出力する（HTTP 500 にはしない） |
 
-リクエストボディは全 API 共通（`sessionId`, `userId` は必須。`message` は任意。`failMode` は DB のみ有効）。
+リクエストボディは JSON 系 API 共通（`sessionId`, `userId` は必須。`message` は任意。`failMode` は DB のみ有効）。
+ファイルアップロード API のみ `multipart/form-data` で受け取る（**詳細は [FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)**）。
 
 ## 動作確認
 
@@ -154,10 +158,54 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/db/execute \
   -d '{"sessionId":"rb-001","userId":"user-001","message":"hello","failMode":"AFTER_DHINFAP"}'
 ```
 
+ファイルアップロード（保存先の絶対パスと保存サイズがレスポンスとログに出る）:
+```
+# 保存先テンポラリフォルダと適用中の上限を確認
+curl -i http://localhost:8080/iwinmichl/api/file/upload-info
+
+# アップロード（パート名は file 固定。-F の @ でファイルを指定する）
+curl -i -X POST http://localhost:8080/iwinmichl/api/file/upload \
+  -F "file=@/tmp/sample_1mb.bin" \
+  -F "note=upload test"
+```
+
+curl でのファイル指定方法のバリエーション、レスポンス全項目の説明、`max-post-size` 超過時の
+詳細レスポンスは **[FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)** にまとめている。
+
+## ファイルアップロード
+
+`POST /api/file/upload` は multipart で受け取ったファイルを **AP サーバのテンポラリフォルダ**へ保存し、
+**保存場所（絶対パス）と保存したファイルのサイズ**をログとレスポンスに出力する。
+
+保存先は `spring.servlet.multipart.location` が未設定なら AP サーバがデプロイに割り当てた
+テンポラリフォルダ（ServletContext の `jakarta.servlet.context.tempdir`。WildFly では
+`$JBOSS_HOME/standalone/tmp/` 配下）。実際の値は `GET /api/file/upload-info` で確認できる。
+
+サイズ上限は 2 段あり、超過時はどちらも HTTP 413 と詳細な JSON（`limitSource` でどちらの上限かを判別）を返す。
+
+| 上限 | 設定 | 既定 |
+|---|---|---|
+| アプリ側 | `MULTIPART_MAX_FILE_SIZE` / `MULTIPART_MAX_REQUEST_SIZE` | 5MB |
+| AP サーバ側 | WildFly http-listener の `max-post-size` | 10MB |
+
+アプリ側を AP サーバ側より小さくしておくと、上限超過が必ずアプリ側で検知され詳細な JSON を返せる
+（既定値はこの関係）。
+
+| 環境変数 | 既定値 | 内容 |
+|---|---|---|
+| `MULTIPART_MAX_FILE_SIZE` | `5MB` | 1 ファイルあたりの上限 |
+| `MULTIPART_MAX_REQUEST_SIZE` | `5MB` | マルチパートリクエスト全体の上限 |
+| `MULTIPART_FILE_SIZE_THRESHOLD` | `0B` | ディスク退避の閾値 |
+| `MULTIPART_LOCATION` | （空） | 保存先の明示指定。空なら AP サーバ既定のテンポラリフォルダ |
+
+利用方法、curl でのアップロードファイル指定方法、レスポンス全項目の説明、`max-post-size` 超過時の
+詳細レスポンスは **[FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)** を参照。
+
 ## ログ出力
 
-各機能（demo / db / cache / external）は、REST API で処理した内容（リクエスト内容・処理ステップ・
-レスポンス・処理時間）を詳細にログへ出力する。出力先・フォーマットは
+各機能（demo / db / cache / external / file）は、REST API で処理した内容（リクエスト内容・処理ステップ・
+レスポンス・処理時間）を詳細にログへ出力する。ファイルアップロード API では**保存先の絶対パスと
+保存したファイルのサイズ**が INFO で出力される。出力先・フォーマットは
 `src/main/resources/logback-spring.xml` で構成し、出力ルートは **環境変数 `LOG_OUT_DIR`** で指定する。
 
 > WildFly(JBoss EAP) デプロイ時は `jboss-deployment-structure.xml` で logging サブシステムを除外して
@@ -169,7 +217,7 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/db/execute \
 | エラーログ | `${LOG_OUT_DIR}/error.log` | ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用） |
 | サーバログ | `${LOG_OUT_DIR}/mid/server.log` | JBoss EAP のサーバログ相当（EAP 既定フォーマット・フレームワーク含む全体） |
 
-各 REST API（demo / db / cache / external）の処理内容は、上記に加えて以下のファイルにも
+各 REST API（demo / db / cache / external / file）の処理内容は、上記に加えて以下のファイルにも
 **すべて同じ内容**で必ず出力される（`application.log` と同じ処理内容ログ）。`mid` を挟むものは
 `mid` ディレクトリ配下に出力する（ディレクトリは自動作成）。
 
@@ -190,7 +238,7 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/db/execute \
 | gc.log | `${LOG_OUT_DIR}/mid/gc.log` |
 
 さらに、環境変数 **`DATA_OUTPUT_DIR`** で指定したデータ出力ディレクトリに、各 REST API
-（demo / db / cache / external / log）の呼び出しごとに `dummy.pdf` を生成する（未設定時は `./data`）。
+（demo / db / cache / external / file / log）の呼び出しごとに `dummy.pdf` を生成する（未設定時は `./data`）。
 この `dummy.pdf` はログのテキストではなく、**Apache PDFBox で生成した本物の PDF**（`DUMMY` という
 文字列を記載）で、`com.example.dhapp.service.DummyPdfService` が呼び出しのたびに上書き作成する。
 ディレクトリが無い場合は自動作成する。

@@ -7,6 +7,24 @@ spring:
   application:
     name: dhapp
 
+  # ===== ファイルアップロード (multipart/form-data) =====
+  # POST /api/file/upload の受信設定。詳細は FILE_UPLOAD_API.md を参照。
+  servlet:
+    multipart:
+      enabled: true
+      # 1 ファイルあたりの上限。超過すると HTTP 413 + 詳細 JSON を返す。
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:5MB}
+      # マルチパートリクエスト全体の上限。
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:5MB}
+      # この値を超えた分を AP サーバがテンポラリファイルへ退避する閾値（0 = 常にディスク）。
+      file-size-threshold: ${MULTIPART_FILE_SIZE_THRESHOLD:0B}
+      # 保存先テンポラリフォルダ。
+      # 未設定（空文字）の場合は AP サーバがデプロイに割り当てたテンポラリフォルダ
+      # （ServletContext の jakarta.servlet.context.tempdir。WildFly では
+      # $JBOSS_HOME/standalone/tmp/<war 名> 配下）が使われる。
+      # 明示的に別ディレクトリへ保存したい場合のみ MULTIPART_LOCATION を指定する。
+      location: ${MULTIPART_LOCATION:}
+
 app:
   # ===== ElastiCache for Valkey (Redis 互換) =====
   valkey:
