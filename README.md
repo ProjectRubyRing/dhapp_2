@@ -116,10 +116,13 @@ XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=
 | 外部 API のみ | `POST /api/external/execute` | 設定 URL へ HTTP POST し結果を返す |
 | ファイルアップロード | `POST /api/file/upload` | multipart で受け取ったファイルを AP サーバのテンポラリフォルダへ保存し、保存場所とサイズをログ・レスポンスに出力 |
 | アップロード設定確認 | `GET /api/file/upload-info` | 保存先テンポラリフォルダと適用中のサイズ上限を返す |
+| HTTPS 通信（自己署名証明書） | `POST /api/tls/call` | 指定 URL へ、JVM トラストストアの `cacert.crt` で検証しながら HTTPS 通信する（`GET /api/tls/call?url=...` も可） |
+| TLS 設定確認 | `GET /api/tls/config` | トラストストア／トラストマネージャー／クライアント SSL コンテキスト／JVM 既定 SSL コンテキストの設定を確認する |
 | エラーログ検証 | `POST /api/log/error-test` | ネストした例外を `error.log` に出力する（HTTP 500 にはしない） |
 
 リクエストボディは JSON 系 API 共通（`sessionId`, `userId` は必須。`message` は任意。`failMode` は DB のみ有効）。
 ファイルアップロード API のみ `multipart/form-data` で受け取る（**詳細は [FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)**）。
+TLS 系 API のリクエストボディは独自形式（**詳細は [TLS_SELFSIGNED_API.md](TLS_SELFSIGNED_API.md)**）。
 
 ## 動作確認
 
@@ -172,6 +175,18 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/file/upload \
 curl でのファイル指定方法のバリエーション、レスポンス全項目の説明、`max-post-size` 超過時の
 詳細レスポンスは **[FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)** にまとめている。
 
+自己署名証明書での HTTPS 通信（TLS ハンドシェイクの内容と証明書チェーンが返る）:
+```
+curl -i -X POST http://localhost:8080/iwinmichl/api/tls/call \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.internal:8443/health"}'
+```
+
+トラストストア・elytron の設定確認（`?probe=true` で実通信まで確認）:
+```
+curl -s http://localhost:8080/iwinmichl/api/tls/config | jq '{status, okCount, ngCount, unknownCount}'
+```
+
 ## ファイルアップロード
 
 `POST /api/file/upload` は multipart で受け取ったファイルを **AP サーバのテンポラリフォルダ**へ保存し、
@@ -200,6 +215,44 @@ curl でのファイル指定方法のバリエーション、レスポンス全
 
 利用方法、curl でのアップロードファイル指定方法、レスポンス全項目の説明、`max-post-size` 超過時の
 詳細レスポンスは **[FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)** を参照。
+
+## 自己署名証明書 (cacert.crt) による HTTPS 通信
+
+`POST /api/tls/call` は、**JVM のトラストストアに登録された自己署名証明書 `cacert.crt`** で
+サーバ証明書を検証しながら、指定 URL へ HTTPS 通信する。独自のトラストマネージャは組み立てず
+**JVM 既定の SSLContext だけ**を使うため、次のどちらの登録が効いているかがそのまま結果に現れる
+（検証を無効化するオプションは用意していない）。
+
+- standalone 起動パラメータ `-Djavax.net.ssl.trustStore` / `-Djavax.net.ssl.trustStorePassword`
+- jboss-cli で登録した elytron の `default-ssl-context`（設定されているとこちらが優先される）
+
+`GET /api/tls/config` は、その登録が **実行中の JVM に反映されているか**を確認する。
+
+| 確認対象 | 対応する設定 |
+|---|---|
+| JVM トラストストア | `-Djavax.net.ssl.trustStore` / `-Djavax.net.ssl.trustStorePassword` と、そこへの cacert.crt の登録 |
+| トラストマネージャー | `/subsystem=elytron/trust-manager=cacertTrustManager` |
+| クライアント SSL コンテキスト | `/subsystem=elytron/client-ssl-context=cacertClientSslContext` |
+| JVM 既定 SSL コンテキスト | `/subsystem=elytron:write-attribute(name=default-ssl-context, ...)` |
+
+elytron への登録は同梱の CLI スクリプトで行う（`default-ssl-context` の反映には reload / 再起動が必要）。
+
+```
+TRUSTSTORE_PATH=/opt/jboss/certs/truststore.jks \
+TRUSTSTORE_PASSWORD=<password> \
+  $JBOSS_HOME/bin/jboss-cli.sh --file=wildfly/configure-truststore.cli
+```
+
+Java アプリを介さず **curl だけで**同じ証明書を使って接続できることは、同梱スクリプトで確認できる
+（curl は JKS を直接読めないため、keytool でトラストストアから PEM を書き出して `--cacert` に渡す）。
+
+```
+./scripts/verify-truststore-curl.sh -u https://example.internal:8443/health \
+  -t /opt/jboss/certs/truststore.jks -p "$TRUSTSTORE_PASSWORD" -c /opt/jboss/certs/cacert.crt
+```
+
+レスポンス全項目の説明、チェック項目一覧、JBoss CLI での登録・確認コマンド、curl での確認手順は
+**[TLS_SELFSIGNED_API.md](TLS_SELFSIGNED_API.md)** を参照。
 
 ## ログ出力
 

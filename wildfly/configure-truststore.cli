@@ -1,0 +1,104 @@
+# =====================================================================
+# 自己署名証明書 (cacert.crt) を登録したトラストストアを、JBoss EAP / WildFly の
+# elytron サブシステムへ登録する。
+#
+#   1. key-store            … トラストストアファイルそのものの登録
+#   2. trust-manager        … 1 を使うトラストマネージャーへの登録
+#   3. client-ssl-context   … 2 を使うクライアント SSL コンテキストへの登録
+#   4. default-ssl-context  … 3 を JVM 既定の SSL コンテキストとして登録
+#
+# 4 を設定すると、Elytron が起動時に SSLContext.setDefault() を実行し、
+# JVM 全体の既定 SSLContext が client-ssl-context に置き換わる。
+# アプリ（POST /api/tls/call）は SSLContext.getDefault() だけを使うため、
+# この設定が効いているかどうかがそのまま通信結果に現れる。
+#
+# ---------------------------------------------------------------------
+# 実行
+# ---------------------------------------------------------------------
+# サーバ未起動（standalone 構成を直接書き換え。configure-wildfly.cli と同じ方式）:
+#   $JBOSS_HOME/bin/jboss-cli.sh --file=wildfly/configure-truststore.cli
+#
+# 起動中のサーバへ適用する場合は先頭の embed-server / 末尾の stop-embedded-server を
+# 削除して --connect で実行し、最後に :reload する。
+#   $JBOSS_HOME/bin/jboss-cli.sh --connect --file=wildfly/configure-truststore.cli
+#
+# ---------------------------------------------------------------------
+# 事前準備（JVM トラストストアへの import）
+# ---------------------------------------------------------------------
+#   keytool -importcert -trustcacerts -noprompt \
+#       -alias cacert \
+#       -file  /opt/jboss/certs/cacert.crt \
+#       -keystore  /opt/jboss/certs/truststore.jks \
+#       -storepass "$TRUSTSTORE_PASSWORD"
+#
+# standalone 起動パラメータ（standalone.conf の JAVA_OPTS）:
+#   -Djavax.net.ssl.trustStore=/opt/jboss/certs/truststore.jks
+#   -Djavax.net.ssl.trustStorePassword=<password>
+#   -Djavax.net.ssl.trustStoreType=JKS
+#
+# ---------------------------------------------------------------------
+# 【注意】key-store のパスは javax.net.ssl.trustStore と同じファイルにする
+# ---------------------------------------------------------------------
+# default-ssl-context を設定すると、JVM 既定の SSLContext は
+# javax.net.ssl.trustStore ではなく「この client-ssl-context の trust-manager」で
+# 構築される。両者が別ファイルを指していると、
+# 「トラストストアには import したのに HTTPS が繋がらない」という状態になる。
+# GET /api/tls/config はこの不一致を検出して detail に出力する。
+# =====================================================================
+
+# 未起動状態の standalone 構成を編集するため embed-server で起動
+embed-server --std-out=echo --server-config=standalone.xml
+
+batch
+
+# ============================ 1. key-store ============================
+# トラストストアファイル（cacert.crt を import 済み）を elytron に登録する。
+# path は javax.net.ssl.trustStore と同じ絶対パスにする。
+if (outcome != success) of /subsystem=elytron/key-store=cacertTrustStore:read-resource
+    /subsystem=elytron/key-store=cacertTrustStore:add( \
+        path=${env.TRUSTSTORE_PATH:/opt/jboss/certs/truststore.jks}, \
+        type=${env.TRUSTSTORE_TYPE:JKS}, \
+        credential-reference={clear-text=${env.TRUSTSTORE_PASSWORD:changeit}})
+end-if
+
+# ========================== 2. trust-manager ==========================
+# 上の key-store を使うトラストマネージャー。algorithm=PKIX は
+# TrustManagerFactory.getDefaultAlgorithm() と同じ既定アルゴリズム。
+if (outcome != success) of /subsystem=elytron/trust-manager=cacertTrustManager:read-resource
+    /subsystem=elytron/trust-manager=cacertTrustManager:add( \
+        key-store=cacertTrustStore, \
+        algorithm=PKIX)
+end-if
+
+# ======================= 3. client-ssl-context ========================
+# アウトバウンド（クライアント側）の SSL コンテキスト。
+# key-manager は指定しない（クライアント証明書認証を行わないため）。
+if (outcome != success) of /subsystem=elytron/client-ssl-context=cacertClientSslContext:read-resource
+    /subsystem=elytron/client-ssl-context=cacertClientSslContext:add( \
+        trust-manager=cacertTrustManager, \
+        protocols=["TLSv1.3","TLSv1.2"])
+end-if
+
+run-batch
+
+# ======================= 4. default-ssl-context =======================
+# JVM 既定の SSL コンテキストとして登録する。
+# 反映には再起動（または :reload）が必要。
+/subsystem=elytron:write-attribute( \
+    name=default-ssl-context, \
+    value=cacertClientSslContext)
+
+stop-embedded-server
+
+# =====================================================================
+# 確認（起動中のサーバに対して実行する）
+# ---------------------------------------------------------------------
+#   $JBOSS_HOME/bin/jboss-cli.sh --connect --commands=\
+#   "/subsystem=elytron/key-store=cacertTrustStore:read-resource,\
+#    /subsystem=elytron/trust-manager=cacertTrustManager:read-resource,\
+#    /subsystem=elytron/client-ssl-context=cacertClientSslContext:read-resource,\
+#    /subsystem=elytron:read-attribute(name=default-ssl-context)"
+#
+# 同じ内容をアプリ（＝実際に通信する JVM）の内側から確認する:
+#   curl -s http://localhost:8080/iwinmichl/api/tls/config | jq .
+# =====================================================================

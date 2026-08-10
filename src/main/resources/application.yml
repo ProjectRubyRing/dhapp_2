@@ -53,6 +53,31 @@ app:
     connect-timeout-ms: ${EXTERNAL_API_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${EXTERNAL_API_READ_TIMEOUT_MS:5000}
 
+  # ===== 自己署名証明書(cacert.crt)による HTTPS 通信の確認 =====
+  # POST /api/tls/call ・ GET /api/tls/config の設定。詳細は TLS_SELFSIGNED_API.md を参照。
+  #
+  # 前提: cacert.crt は JVM のトラストストアに import 済みで、JBoss EAP の standalone 起動時に
+  #       -Djavax.net.ssl.trustStore / -Djavax.net.ssl.trustStorePassword で渡されている。
+  #       アプリはトラストストアのパス／パスワードを自前では持たず、
+  #       JVM 既定の SSLContext（＝上記システムプロパティ、または elytron の
+  #       default-ssl-context）だけを使って通信する。
+  tls:
+    # HTTPS 接続先。リクエストで url を指定しなかった場合に使われる。
+    target-url: ${TLS_TARGET_URL:https://localhost:8443/}
+    connect-timeout-ms: ${TLS_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${TLS_READ_TIMEOUT_MS:5000}
+    # トラストストアに登録したはずの自己署名証明書ファイル。
+    # 設定確認 API がこのファイルを読み、SHA-256 フィンガープリントでトラストストア内を照合する。
+    ca-cert-path: ${TLS_CA_CERT_PATH:}
+    # ca-cert-path が読めない場合に、代わりに存在確認するトラストストアのエイリアス。
+    expected-alias: ${TLS_EXPECTED_ALIAS:cacert}
+    # jboss-cli（wildfly/configure-truststore.cli）で登録した elytron リソース名。
+    # 設定確認 API はこの名前で登録されていることを期待する。
+    elytron:
+      key-store: ${TLS_ELYTRON_KEY_STORE:cacertTrustStore}
+      trust-manager: ${TLS_ELYTRON_TRUST_MANAGER:cacertTrustManager}
+      client-ssl-context: ${TLS_ELYTRON_CLIENT_SSL_CONTEXT:cacertClientSslContext}
+
 # ===== ログ出力 =====
 # ファイル出力先・フォーマットは src/main/resources/logback-spring.xml で構成する。
 # 出力ルートは環境変数 LOG_OUT_DIR で指定する（未設定時は ./logs）。
