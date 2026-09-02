@@ -6,8 +6,8 @@
 
 | 経路 | 対象 | 読み方 |
 |---|---|---|
-| **ファイル読み** | `/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties`（war の外・AP サーバのファイルシステム上） | `Files.readAllBytes()` |
-| **リソース読み** | クラスパス配下の `jp/iwin/tango/date_config.properties`（war にアーカイブ済み → `WEB-INF/classes/` 配下） | `ClassLoader#getResource()` |
+| **ファイル読み** | `/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties`（war の外・AP サーバのファイルシステム上） | `Files.readAllBytes()` |
+| **リソース読み** | クラスパス配下の `jp/iwin/base/tango/date_config.properties`（war にアーカイブ済み → `WEB-INF/classes/` 配下） | `ClassLoader#getResource()` |
 
 コンテキストパスは `/iwinmichl` なので、実際の URL は次のようになる。
 
@@ -41,9 +41,9 @@ chown -R jboss:jboss /webapp        # EAP の実行ユーザーが読めるよ�
 
 ### 2. リソース読み側（war 同梱）
 
-`src/main/resources/jp/iwin/tango/date_config.properties` として**すでにリポジトリに含まれている**。
+`src/main/resources/jp/iwin/base/tango/date_config.properties` として**すでにリポジトリに含まれている**。
 `mvn package` すると war のアーカイブ対象になり、デプロイ後は
-`WEB-INF/classes/jp/iwin/tango/date_config.properties` に展開される。
+`WEB-INF/classes/jp/iwin/base/tango/date_config.properties` に展開される。
 
 ```
 # war に入っていることの確認
@@ -77,7 +77,7 @@ curl -s http://localhost:8080/iwinmichl/api/config/date-config \
   "status": "SUCCESS",                    // SUCCESS / PARTIAL / FAILED
   "fileRead": {
     "readType": "FILE",
-    "location": "/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties",
+    "location": "/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties",
     "resolvedFilePath": "/webapp/…/date_config.properties",
     "exists": true, "readable": true, "loaded": true,
     "sizeBytes": 512,
@@ -91,8 +91,8 @@ curl -s http://localhost:8080/iwinmichl/api/config/date-config \
   },
   "resourceRead": {
     "readType": "RESOURCE",
-    "location": "classpath:jp/iwin/tango/date_config.properties",
-    "resolvedUrl": "vfs:/content/dhapp.war/WEB-INF/classes/jp/iwin/tango/date_config.properties",
+    "location": "classpath:jp/iwin/base/tango/date_config.properties",
+    "resolvedUrl": "vfs:/content/dhapp.war/WEB-INF/classes/jp/iwin/base/tango/date_config.properties",
     "resolvedFilePath": "/opt/server/standalone/tmp/vfs/…/date_config.properties",
     "classLoader": "ModuleClassLoader for Module \"deployment.dhapp.war\"",
     "sha256": "…", "properties": { "config.origin": "war-archive", … }
@@ -139,7 +139,7 @@ JBoss EAP の deployment-overlay は war を作り直さずに中のファイル
   "overlayNames": ["date-config-overlay"],
   "overlays": [
     { "name": "date-config-overlay",
-      "contentPaths": ["WEB-INF/classes/jp/iwin/tango/date_config.properties"],
+      "contentPaths": ["WEB-INF/classes/jp/iwin/base/tango/date_config.properties"],
       "contentAttributes": { "WEB-INF/…/date_config.properties.contentHash": "…" },
       "deployments": ["dhapp.war"],
       "appliesToThisDeployment": true,
@@ -213,7 +213,7 @@ requestId=…, timestamp=…, status=SUCCESS, elapsedMs=12
 
 [1] ファイル読み（war の外のファイルを直接読む）
   readType        : FILE
-  location        : /webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties
+  location        : /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties
   …
   properties      : 12 件
       config.origin = filesystem
@@ -221,7 +221,7 @@ requestId=…, timestamp=…, status=SUCCESS, elapsedMs=12
 
 [2] リソース読み（war 同梱・クラスパス配下）
   readType        : RESOURCE
-  resolvedUrl     : vfs:/content/dhapp.war/WEB-INF/classes/jp/iwin/tango/date_config.properties
+  resolvedUrl     : vfs:/content/dhapp.war/WEB-INF/classes/jp/iwin/base/tango/date_config.properties
   …
 
 [3] 比較結果（ファイル読み vs リソース読み）
@@ -245,8 +245,8 @@ requestId=…, timestamp=…, status=SUCCESS, elapsedMs=12
 
 | 設定 | 環境変数 | 既定値 | 内容 |
 |---|---|---|---|
-| `file-path` | `DATE_CONFIG_FILE_PATH` | `/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties` | ファイル読みの対象 |
-| `resource-name` | `DATE_CONFIG_RESOURCE_NAME` | `jp/iwin/tango/date_config.properties` | リソース読みの対象（先頭スラッシュ無し） |
+| `file-path` | `DATE_CONFIG_FILE_PATH` | `/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties` | ファイル読みの対象 |
+| `resource-name` | `DATE_CONFIG_RESOURCE_NAME` | `jp/iwin/base/tango/date_config.properties` | リソース読みの対象（先頭スラッシュ無し） |
 | `charset` | `DATE_CONFIG_CHARSET` | `UTF-8` | 復号に使う文字セット |
 | `include-raw-text` | `DATE_CONFIG_INCLUDE_RAW_TEXT` | `true` | 生テキストをレスポンス・ログに載せるか |
 

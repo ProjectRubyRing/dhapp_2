@@ -83,10 +83,10 @@ app:
   config:
     date-config:
       # ★ファイル読みの対象。war の外・AP サーバのファイルシステム上のファイル。
-      file-path: ${DATE_CONFIG_FILE_PATH:/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties}
+      file-path: ${DATE_CONFIG_FILE_PATH:/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}
       # ★リソース読みの対象。war にアーカイブ済み（デプロイ後は WEB-INF/classes 配下）。
       # ClassLoader#getResource に渡す名前なので先頭のスラッシュは付けない。
-      resource-name: ${DATE_CONFIG_RESOURCE_NAME:jp/iwin/tango/date_config.properties}
+      resource-name: ${DATE_CONFIG_RESOURCE_NAME:jp/iwin/base/tango/date_config.properties}
       # 読み取ったバイト列を復号する文字セット。復号できない byte 列があれば
       # charsetMismatch=true として報告する（値は文字化けした状態で読み進める）。
       charset: ${DATE_CONFIG_CHARSET:UTF-8}

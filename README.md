@@ -299,10 +299,10 @@ Java アプリを介さず **curl だけで**同じ証明書を使って接続�
 
 | 経路 | 対象 | 読み方 |
 |---|---|---|
-| ファイル読み | `/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties`（war の外） | `Files.readAllBytes()` |
-| リソース読み | クラスパス配下の `jp/iwin/tango/date_config.properties`（war 同梱 → `WEB-INF/classes/`） | `ClassLoader#getResource()` |
+| ファイル読み | `/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties`（war の外） | `Files.readAllBytes()` |
+| リソース読み | クラスパス配下の `jp/iwin/base/tango/date_config.properties`（war 同梱 → `WEB-INF/classes/`） | `ClassLoader#getResource()` |
 
-war 同梱側は `src/main/resources/jp/iwin/tango/date_config.properties` としてリポジトリに含めてあり、
+war 同梱側は `src/main/resources/jp/iwin/base/tango/date_config.properties` としてリポジトリに含めてあり、
 `mvn package` でそのまま war のアーカイブ対象になる。ファイル読み側のサンプルは
 `samples/webapp/` に同じ階層で置いてある（`cp -r samples/webapp /` で配置できる）。
 

@@ -20,13 +20,13 @@ import com.example.dhapp.dto.DateConfigResponse;
 /**
  * {@link DateConfigService} の読み込み・比較・overlay 検知の確認。
  *
- * <p>リソース読みの対象は war に同梱する {@code jp/iwin/tango/date_config.properties}
+ * <p>リソース読みの対象は war に同梱する {@code jp/iwin/base/tango/date_config.properties}
  * （テスト実行時もクラスパス上にある）を、ファイル読みの対象は一時ディレクトリに作った
  * ファイルを使う。</p>
  */
 class DateConfigServiceTest {
 
-    private static final String RESOURCE_NAME = "jp/iwin/tango/date_config.properties";
+    private static final String RESOURCE_NAME = "jp/iwin/base/tango/date_config.properties";
 
     @TempDir
     Path tempDir;
@@ -37,7 +37,7 @@ class DateConfigServiceTest {
     void setUp() throws IOException {
         configFile = tempDir.resolve("date_config.properties");
         Files.writeString(configFile, """
-                config.source=file:/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties
+                config.source=file:/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties
                 config.origin=filesystem
                 config.revision=1
                 date.format=yyyy-MM-dd

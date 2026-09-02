@@ -15,7 +15,7 @@ public class DeploymentOverlayEntry {
      * この overlay が差し替えるデプロイ内のパス一覧
      * （{@code /deployment-overlay=X/content=<パス>}）。
      * war 内のクラスパスリソースを差し替える場合は
-     * {@code WEB-INF/classes/jp/iwin/tango/date_config.properties} のような値になる。
+     * {@code WEB-INF/classes/jp/iwin/base/tango/date_config.properties} のような値になる。
      */
     private List<String> contentPaths;
 

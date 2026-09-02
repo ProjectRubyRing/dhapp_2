@@ -56,13 +56,13 @@ import com.example.dhapp.dto.DeploymentOverlayInfo;
  *   <tr><th>経路</th><th>対象</th><th>API</th></tr>
  *   <tr>
  *     <td>ファイル読み</td>
- *     <td>{@code /webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties}
+ *     <td>{@code /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}
  *         （war の外・AP サーバのファイルシステム上）</td>
  *     <td>{@link Files#readAllBytes(Path)}</td>
  *   </tr>
  *   <tr>
  *     <td>リソース読み</td>
- *     <td>クラスパス配下の {@code jp/iwin/tango/date_config.properties}
+ *     <td>クラスパス配下の {@code jp/iwin/base/tango/date_config.properties}
  *         （war にアーカイブ済み → {@code WEB-INF/classes/} 配下）</td>
  *     <td>{@link ClassLoader#getResource(String)}</td>
  *   </tr>
@@ -121,9 +121,9 @@ public class DateConfigService {
 
     public DateConfigService(
             @Value("${app.config.date-config.file-path:"
-                    + "/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties}")
+                    + "/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}")
             String filePath,
-            @Value("${app.config.date-config.resource-name:jp/iwin/tango/date_config.properties}")
+            @Value("${app.config.date-config.resource-name:jp/iwin/base/tango/date_config.properties}")
             String resourceName,
             @Value("${app.config.date-config.charset:UTF-8}") String charsetName,
             @Value("${app.config.date-config.include-raw-text:true}") boolean includeRawText,
@@ -200,7 +200,7 @@ public class DateConfigService {
 
     /**
      * {@code app.config.date-config.file-path}（既定
-     * {@code /webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties}）を
+     * {@code /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}）を
      * ファイルとして読む。
      */
     public ConfigSourceResult readFromFile() {
@@ -247,7 +247,7 @@ public class DateConfigService {
     // ------------------------------------------------------------------------
 
     /**
-     * クラスパス配下の {@code jp/iwin/tango/date_config.properties}（war 同梱）を読む。
+     * クラスパス配下の {@code jp/iwin/base/tango/date_config.properties}（war 同梱）を読む。
      *
      * <p>解決先 URL と、そこから取り出せる物理パスも記録する。deployment-overlay で
      * 差し替えられると、WildFly の VFS 上では同じ URL のまま実体（物理ファイル）が
@@ -795,7 +795,7 @@ public class DateConfigService {
     /** クラスパスリソース名の先頭スラッシュを落とす（ClassLoader#getResource は絶対名を取らない）。 */
     private static String normalizeResourceName(String name) {
         String normalized = StringUtils.hasText(name)
-                ? name.trim() : "jp/iwin/tango/date_config.properties";
+                ? name.trim() : "jp/iwin/base/tango/date_config.properties";
         while (normalized.startsWith("/")) {
             normalized = normalized.substring(1);
         }

@@ -34,7 +34,7 @@ import com.example.dhapp.dto.DeploymentOverlayInfo;
  * <pre>
  * # war 内のクラスパスリソースを、サーバ上の別ファイルで差し替える
  * deployment-overlay add --name=date-config-overlay \
- *     --content=WEB-INF/classes/jp/iwin/tango/date_config.properties=/opt/overlay/date_config.properties \
+ *     --content=WEB-INF/classes/jp/iwin/base/tango/date_config.properties=/opt/overlay/date_config.properties \
  *     --deployments=dhapp.war --redeploy-affected
  * </pre>
  *
@@ -75,7 +75,7 @@ public class DeploymentOverlayInspector {
      * deployment-overlay の定義状態を読み取る。
      *
      * @param resourcePathInDeployment 差し替え対象として注目するデプロイ内パス。
-     *        例: {@code WEB-INF/classes/jp/iwin/tango/date_config.properties}
+     *        例: {@code WEB-INF/classes/jp/iwin/base/tango/date_config.properties}
      */
     public DeploymentOverlayInfo inspect(String resourcePathInDeployment) {
         DeploymentOverlayInfo info = new DeploymentOverlayInfo();
