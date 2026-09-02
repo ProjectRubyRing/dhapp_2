@@ -31,7 +31,7 @@ import com.example.dhapp.service.DummyPdfService;
  * <p>読み込み対象は次の 2 つ。</p>
  * <ol>
  *   <li><b>ファイル読み</b>:
- *       {@code /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}
+ *       {@code /webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties}
  *       （war の外・AP サーバのファイルシステム上）。結果は<b>ログとコンソール</b>へ出力する。</li>
  *   <li><b>リソース読み</b>: クラスパス配下の {@code jp/iwin/base/tango/date_config.properties}
  *       （war にアーカイブ対象として同梱 → {@code WEB-INF/classes/} 配下）。

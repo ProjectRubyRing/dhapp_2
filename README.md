@@ -118,7 +118,7 @@ XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=
 | アップロード設定確認 | `GET /api/file/upload-info` | 保存先テンポラリフォルダと適用中のサイズ上限を返す |
 | HTTPS 通信（自己署名証明書） | `POST /api/tls/call` | 指定 URL へ、JVM トラストストアの `cacert.crt` で検証しながら HTTPS 通信する（`GET /api/tls/call?url=...` も可） |
 | TLS 設定確認 | `GET /api/tls/config` | トラストストア／トラストマネージャー／クライアント SSL コンテキスト／JVM 既定 SSL コンテキストの設定を確認する |
-| 設定ファイル読み込み確認 | `GET /api/config/date-config` | `date_config.properties` を**ファイル読み**（`/webapp/webapp9mf02/serverlets/...`）と**リソース読み**（war 同梱のクラスパス配下）の 2 経路で読み、結果をログ・コンソールへ出力して比較する。deployment-overlay の反映も検知する |
+| 設定ファイル読み込み確認 | `GET /api/config/date-config` | `date_config.properties` を**ファイル読み**（`/webapp/webapp9mf02/servlets/...`）と**リソース読み**（war 同梱のクラスパス配下）の 2 経路で読み、結果をログ・コンソールへ出力して比較する。deployment-overlay の反映も検知する |
 | secure-api への HTTPS 接続確認 | `GET /api/secure-api/call` | **JVM 管理**と **JBoss EAP(Elytron) 管理**の各トラストストアで compose の `secure-api` へ HTTPS 接続し、結果を詳細に画面表示・ログ出力して比較する |
 | トラストストア内容確認 | `GET /api/secure-api/truststores` | 接続せず、JVM 側・JBoss EAP 側それぞれのトラストストアの中身と elytron の登録状態を返す |
 | エラーログ検証 | `POST /api/log/error-test` | ネストした例外を `error.log` に出力する（HTTP 500 にはしない） |
@@ -299,7 +299,7 @@ Java アプリを介さず **curl だけで**同じ証明書を使って接続�
 
 | 経路 | 対象 | 読み方 |
 |---|---|---|
-| ファイル読み | `/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties`（war の外） | `Files.readAllBytes()` |
+| ファイル読み | `/webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties`（war の外） | `Files.readAllBytes()` |
 | リソース読み | クラスパス配下の `jp/iwin/base/tango/date_config.properties`（war 同梱 → `WEB-INF/classes/`） | `ClassLoader#getResource()` |
 
 war 同梱側は `src/main/resources/jp/iwin/base/tango/date_config.properties` としてリポジトリに含めてあり、
