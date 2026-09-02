@@ -146,6 +146,37 @@ public class TrustStoreInspector {
                 effectivePassword = DEFAULT_CACERTS_PASSWORD;
             }
         }
+        return openAndFill(file, effectivePassword, info);
+    }
+
+    /**
+     * 任意のパス・パスワード・種別でトラストストアを読み込む。
+     *
+     * <p>{@code javax.net.ssl.trustStore*} システムプロパティ以外で位置が決まるストア
+     * ——JBoss EAP(Elytron) の {@code key-store} が指すファイルなど——を、
+     * JVM 既定のストアと同じ形（{@link TrustStoreInfo}）で扱うために使う。</p>
+     *
+     * @param path     トラストストアのパス
+     * @param password パスワード（null 可。誤っている場合は整合性チェック無しで読み直す）
+     * @param type     ストア種別（null なら中身から自動判別）
+     * @param source   どこから位置を決めたかの説明（レスポンスにそのまま載せる）
+     */
+    public LoadedTrustStore loadFrom(String path, String password, String type, String source) {
+        TrustStoreInfo info = new TrustStoreInfo();
+        info.setSource(source);
+        info.setPathPropertyProvided(StringUtils.hasText(path));
+        info.setPasswordPropertyProvided(StringUtils.hasText(password));
+        info.setType(StringUtils.hasText(type) ? type : KeyStore.getDefaultType());
+
+        if (!StringUtils.hasText(path)) {
+            info.setLoadErrorMessage("トラストストアのパスを特定できない。");
+            return new LoadedTrustStore(info, null);
+        }
+        return openAndFill(Paths.get(path.trim()), password, info);
+    }
+
+    /** 実ファイルを開いて {@link TrustStoreInfo} を埋める、load / loadFrom 共通の後半処理。 */
+    private LoadedTrustStore openAndFill(Path file, String password, TrustStoreInfo info) {
         info.setPath(file.toAbsolutePath().toString());
         info.setExists(Files.exists(file));
         info.setReadable(Files.isReadable(file));
@@ -159,7 +190,7 @@ public class TrustStoreInspector {
             return new LoadedTrustStore(info, null);
         }
 
-        KeyStore keyStore = openKeyStore(file, effectivePassword, info);
+        KeyStore keyStore = openKeyStore(file, password, info);
         if (keyStore == null) {
             return new LoadedTrustStore(info, null);
         }

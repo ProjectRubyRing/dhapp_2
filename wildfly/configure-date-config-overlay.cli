@@ -1,0 +1,51 @@
+# =====================================================================
+# date_config.properties を deployment-overlay で差し替える。
+#
+# war を作り直さずに、war 内の
+#   WEB-INF/classes/jp/iwin/base/tango/date_config.properties
+# をサーバ上の別ファイル（既定 /opt/overlay/date_config.properties）で
+# 置き換える。GET /api/config/date-config の「リソース読み」側だけが
+# 差し替わるので、ファイル読みとの比較でその反映が確認できる。
+#
+# ---------------------------------------------------------------------
+# 事前準備
+# ---------------------------------------------------------------------
+#   mkdir -p /opt/overlay
+#   cp samples/overlay/date_config.properties /opt/overlay/date_config.properties
+#   chown jboss:jboss /opt/overlay/date_config.properties
+#
+# ---------------------------------------------------------------------
+# 実行（起動中のサーバへ適用する）
+# ---------------------------------------------------------------------
+#   $JBOSS_HOME/bin/jboss-cli.sh --connect --file=wildfly/configure-date-config-overlay.cli
+#
+# --redeploy-affected を付けているため、対象デプロイメント（dhapp.war）は
+# このスクリプトの実行時に再デプロイされる。再デプロイ後にもう一度
+#   curl -s http://localhost:8080/iwinmichl/api/config/date-config | jq .deploymentOverlay
+# を呼ぶと、次のようになる。
+#
+#   dateConfigOverlayDefined  : true   … 管理モデルに overlay の定義がある
+#   overlayAppliedToThisDeployment : true
+#   resourceContentChanged    : true   … ★実際に中身が差し替わった（反映の証拠）
+#
+# ※ resourceContentChanged は「前回この API を呼んだときの SHA-256 との比較」なので、
+#    overlay 適用の前に一度 API を呼んで指紋を記録しておくこと。
+#    （再デプロイで war のクラスローダは作り直されるが、指紋は JVM 内に保持される）
+#
+# ---------------------------------------------------------------------
+# 取り消し（overlay を外して war 同梱の内容へ戻す）
+# ---------------------------------------------------------------------
+#   $JBOSS_HOME/bin/jboss-cli.sh --connect \
+#     --command="deployment-overlay remove --name=date-config-overlay \
+#                --deployments=dhapp.war --redeploy-affected"
+# =====================================================================
+
+# 差し替え定義の追加（overlay 名・war 内のパス・差し替え元ファイル）
+deployment-overlay add \
+    --name=date-config-overlay \
+    --content=WEB-INF/classes/jp/iwin/base/tango/date_config.properties=/opt/overlay/date_config.properties \
+    --deployments=dhapp.war \
+    --redeploy-affected
+
+# 反映結果の確認（content の content-hash まで表示される）
+/deployment-overlay=date-config-overlay:read-resource(recursive=true)

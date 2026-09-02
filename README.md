@@ -118,11 +118,16 @@ XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=
 | アップロード設定確認 | `GET /api/file/upload-info` | 保存先テンポラリフォルダと適用中のサイズ上限を返す |
 | HTTPS 通信（自己署名証明書） | `POST /api/tls/call` | 指定 URL へ、JVM トラストストアの `cacert.crt` で検証しながら HTTPS 通信する（`GET /api/tls/call?url=...` も可） |
 | TLS 設定確認 | `GET /api/tls/config` | トラストストア／トラストマネージャー／クライアント SSL コンテキスト／JVM 既定 SSL コンテキストの設定を確認する |
+| 設定ファイル読み込み確認 | `GET /api/config/date-config` | `date_config.properties` を**ファイル読み**（`/webapp/webapp9mf02/serverlets/...`）と**リソース読み**（war 同梱のクラスパス配下）の 2 経路で読み、結果をログ・コンソールへ出力して比較する。deployment-overlay の反映も検知する |
+| secure-api への HTTPS 接続確認 | `GET /api/secure-api/call` | **JVM 管理**と **JBoss EAP(Elytron) 管理**の各トラストストアで compose の `secure-api` へ HTTPS 接続し、結果を詳細に画面表示・ログ出力して比較する |
+| トラストストア内容確認 | `GET /api/secure-api/truststores` | 接続せず、JVM 側・JBoss EAP 側それぞれのトラストストアの中身と elytron の登録状態を返す |
 | エラーログ検証 | `POST /api/log/error-test` | ネストした例外を `error.log` に出力する（HTTP 500 にはしない） |
 
 リクエストボディは JSON 系 API 共通（`sessionId`, `userId` は必須。`message` は任意。`failMode` は DB のみ有効）。
 ファイルアップロード API のみ `multipart/form-data` で受け取る（**詳細は [FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)**）。
 TLS 系 API のリクエストボディは独自形式（**詳細は [TLS_SELFSIGNED_API.md](TLS_SELFSIGNED_API.md)**）。
+設定ファイル読み込み確認 API はクエリパラメータのみ（**詳細は [CONFIG_READ_API.md](CONFIG_READ_API.md)**）。
+secure-api への HTTPS 接続確認 API もクエリパラメータのみ（**詳細は [SECURE_API_TLS.md](SECURE_API_TLS.md)**）。
 
 ## 動作確認
 
@@ -185,6 +190,39 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/tls/call \
 トラストストア・elytron の設定確認（`?probe=true` で実通信まで確認）:
 ```
 curl -s http://localhost:8080/iwinmichl/api/tls/config | jq '{status, okCount, ngCount, unknownCount}'
+```
+
+`date_config.properties` の読み込み確認（ファイル読み vs リソース読み。結果はログとコンソールにも出る）:
+```
+# JSON（全項目）
+curl -s http://localhost:8080/iwinmichl/api/config/date-config | jq .
+
+# ログ・コンソールと同じテキストレポート
+curl -s "http://localhost:8080/iwinmichl/api/config/date-config?format=text"
+
+# 要点だけ（比較結果と deployment-overlay の反映有無）
+curl -s http://localhost:8080/iwinmichl/api/config/date-config \
+  | jq '{status, verdict: .comparison.verdict,
+         overlay: .deploymentOverlay.dateConfigOverlayDefined,
+         changed: .deploymentOverlay.resourceContentChanged}'
+```
+
+secure-api への HTTPS 接続確認（JVM 管理ストアと JBoss EAP 管理ストアの両方で接続して比較）:
+```
+# 2 系統で接続（テキストレポートは画面表示用）
+curl -s "http://localhost:8080/iwinmichl/api/secure-api/call?format=text"
+
+# 要点だけ
+curl -s http://localhost:8080/iwinmichl/api/secure-api/call \
+  | jq '{status, jvm: .comparison.jvmStatus, jboss: .comparison.jbossStatus,
+         both: .comparison.bothSucceeded}'
+
+# ALB 経由 / 対照実験（空のトラストストア）込み
+curl -s "http://localhost:8080/iwinmichl/api/secure-api/call?target=alb"
+curl -s "http://localhost:8080/iwinmichl/api/secure-api/call?trust=all"
+
+# 接続せずトラストストアの中身だけ確認（切り分け用）
+curl -s "http://localhost:8080/iwinmichl/api/secure-api/truststores?format=text"
 ```
 
 ## ファイルアップロード
@@ -254,12 +292,88 @@ Java アプリを介さず **curl だけで**同じ証明書を使って接続�
 レスポンス全項目の説明、チェック項目一覧、JBoss CLI での登録・確認コマンド、curl での確認手順は
 **[TLS_SELFSIGNED_API.md](TLS_SELFSIGNED_API.md)** を参照。
 
+## 設定ファイルの読み込み確認（ファイル読み / リソース読み / deployment-overlay）
+
+`GET /api/config/date-config` は、同じ `date_config.properties` を **2 つの経路**で読み込み、
+その内容をログ・コンソールへ出力したうえで比較する。
+
+| 経路 | 対象 | 読み方 |
+|---|---|---|
+| ファイル読み | `/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties`（war の外） | `Files.readAllBytes()` |
+| リソース読み | クラスパス配下の `jp/iwin/base/tango/date_config.properties`（war 同梱 → `WEB-INF/classes/`） | `ClassLoader#getResource()` |
+
+war 同梱側は `src/main/resources/jp/iwin/base/tango/date_config.properties` としてリポジトリに含めてあり、
+`mvn package` でそのまま war のアーカイブ対象になる。ファイル読み側のサンプルは
+`samples/webapp/` に同じ階層で置いてある（`cp -r samples/webapp /` で配置できる）。
+
+比較結果は `comparison.verdict` に出る（`IDENTICAL` / `SAME_PROPERTIES` / `DIFFERENT` /
+`FILE_ONLY` / `RESOURCE_ONLY` / `BOTH_UNAVAILABLE`）。差分があるキーは
+`comparison.differentValues` に `file=… / resource=…` の形で並ぶ。
+
+**deployment-overlay による差し替えの反映**も 2 つの方法で検知する。
+
+1. 管理モデル（JMX ファサード `jboss.as:deployment-overlay=*`）から overlay の定義・
+   リンク先デプロイメント・`content-hash` を読む（設定として存在するか）
+2. 読み取った内容の指紋（解決先 URL・SHA-256）を前回の呼び出しと比較する（実際に差し替わったか）
+
+```
+# overlay 適用前に一度呼んで指紋を記録 → overlay 適用 → もう一度呼ぶ
+curl -s http://localhost:8080/iwinmichl/api/config/date-config > /dev/null
+cp samples/overlay/date_config.properties /opt/overlay/date_config.properties
+$JBOSS_HOME/bin/jboss-cli.sh --connect --file=wildfly/configure-date-config-overlay.cli
+curl -s http://localhost:8080/iwinmichl/api/config/date-config \
+  | jq '{overlay: .deploymentOverlay.dateConfigOverlayDefined,
+         changed: .deploymentOverlay.resourceContentChanged}'
+# → { "overlay": true, "changed": true }
+```
+
+レスポンス全項目の説明、確認手順、設定一覧は **[CONFIG_READ_API.md](CONFIG_READ_API.md)** を参照。
+
+## secure-api への HTTPS 接続確認（JVM / JBoss EAP の各トラストストア）
+
+`GET /api/secure-api/call` は、**JVM が管理するトラストストア**と
+**JBoss EAP(Elytron) が管理するトラストストア**のそれぞれで、compose の `secure-api` サービス
+（別リポジトリ `Container_Compose_file`。WireMock を `--disable-http` で起動した HTTPS 必須の API）へ
+接続し、TLS ハンドシェイクの内容と HTTP 応答を詳細に画面表示・ログ出力する。
+
+| trustSource | トラストストアの実体 | SSLContext |
+|---|---|---|
+| `JVM` | `-Djavax.net.ssl.trustStore` が指すストア | `SSLContext.getDefault()`（アプリは何も設定しない） |
+| `JBOSS_EAP` | elytron の `key-store`（例 `appTrustStore` → `$JBOSS_HOME/standalone/configuration/jboss-truststore.p12`） | そのファイルから組み立てた専用 SSLContext |
+| `NONE` | 空のトラストストア（`trust=all` のときだけ実行する対照実験） | 失敗するのが正しい |
+
+JBoss EAP 側ストアの位置は決め打ちせず、`app.secure-api.jboss.truststore-path` →
+elytron の `key-store` の `path` / `relative-to`（JMX 管理モデルから取得）→
+`${jboss.server.config.dir}/jboss-truststore.p12` の順に解決する。どれが使われたかは
+レスポンスの `trustStoreResolution` に出る。
+
+接続先の既定値は compose の環境変数に合わせてある
+（`SECURE_API_URL=https://secure-api:8443/api/v1/ping`、
+`SECURE_API_VIA_ALB_URL=https://alb/secure/v1/ping` → `?target=alb`）。
+
+```
+curl -s "http://localhost:8080/iwinmichl/api/secure-api/call?format=text"
+curl -s http://localhost:8080/iwinmichl/api/secure-api/call \
+  | jq '{status, jvm: .comparison.jvmStatus, jboss: .comparison.jbossStatus,
+         both: .comparison.bothSucceeded, summary: .comparison.summary}'
+```
+
+どちらか一方だけ失敗した場合は、失敗した側のストアへの `cacert.crt` の取り込みが効いていない。
+`GET /api/secure-api/truststores` で両ストアの中身（エイリアス・エントリ数）と elytron の
+登録状態を確認できる。判定の読み方・レスポンス全項目・設定一覧は
+**[SECURE_API_TLS.md](SECURE_API_TLS.md)** を参照。
+
 ## ログ出力
 
-各機能（demo / db / cache / external / file）は、REST API で処理した内容（リクエスト内容・処理ステップ・
-レスポンス・処理時間）を詳細にログへ出力する。ファイルアップロード API では**保存先の絶対パスと
-保存したファイルのサイズ**が INFO で出力される。出力先・フォーマットは
+各機能（demo / db / cache / external / file / tls / config / secure-api）は、REST API で処理した内容
+（リクエスト内容・処理ステップ・レスポンス・処理時間）を詳細にログへ出力する。ファイルアップロード
+API では**保存先の絶対パスと保存したファイルのサイズ**が INFO で出力される。出力先・フォーマットは
 `src/main/resources/logback-spring.xml` で構成し、出力ルートは **環境変数 `LOG_OUT_DIR`** で指定する。
+
+`GET /api/config/date-config` と `GET /api/secure-api/call` は、結果のテキストレポートを
+**ログと同時にコンソール（標準出力）へも直接出力する**。コンソールへの出力は UTF-8 固定で書くため、
+コンテナのロケールが `POSIX` / `C`（`stdout.encoding` が ASCII）でも日本語が化けない。
+同じレポートはレスポンスの `report` フィールドと `?format=text` からも取得できる。
 
 > WildFly(JBoss EAP) デプロイ時は `jboss-deployment-structure.xml` で logging サブシステムを除外して
 > いるため、ログ出力は war 内の Logback（Spring Boot 標準）が担う。
