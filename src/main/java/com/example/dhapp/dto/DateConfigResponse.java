@@ -19,7 +19,7 @@ public class DateConfigResponse {
      */
     private String status;
 
-    /** ★ファイル読み: /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties */
+    /** ★ファイル読み: /webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties */
     private ConfigSourceResult fileRead;
 
     /** ★リソース読み: クラスパス上の jp/iwin/base/tango/date_config.properties（war 同梱） */

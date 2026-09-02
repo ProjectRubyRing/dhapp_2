@@ -56,7 +56,7 @@ import com.example.dhapp.dto.DeploymentOverlayInfo;
  *   <tr><th>経路</th><th>対象</th><th>API</th></tr>
  *   <tr>
  *     <td>ファイル読み</td>
- *     <td>{@code /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}
+ *     <td>{@code /webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties}
  *         （war の外・AP サーバのファイルシステム上）</td>
  *     <td>{@link Files#readAllBytes(Path)}</td>
  *   </tr>
@@ -121,7 +121,7 @@ public class DateConfigService {
 
     public DateConfigService(
             @Value("${app.config.date-config.file-path:"
-                    + "/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}")
+                    + "/webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties}")
             String filePath,
             @Value("${app.config.date-config.resource-name:jp/iwin/base/tango/date_config.properties}")
             String resourceName,
@@ -200,7 +200,7 @@ public class DateConfigService {
 
     /**
      * {@code app.config.date-config.file-path}（既定
-     * {@code /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties}）を
+     * {@code /webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties}）を
      * ファイルとして読む。
      */
     public ConfigSourceResult readFromFile() {

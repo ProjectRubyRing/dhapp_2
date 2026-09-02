@@ -6,7 +6,7 @@
 
 | 経路 | 対象 | 読み方 |
 |---|---|---|
-| **ファイル読み** | `/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties`（war の外・AP サーバのファイルシステム上） | `Files.readAllBytes()` |
+| **ファイル読み** | `/webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties`（war の外・AP サーバのファイルシステム上） | `Files.readAllBytes()` |
 | **リソース読み** | クラスパス配下の `jp/iwin/base/tango/date_config.properties`（war にアーカイブ済み → `WEB-INF/classes/` 配下） | `ClassLoader#getResource()` |
 
 コンテキストパスは `/iwinmichl` なので、実際の URL は次のようになる。
@@ -77,7 +77,7 @@ curl -s http://localhost:8080/iwinmichl/api/config/date-config \
   "status": "SUCCESS",                    // SUCCESS / PARTIAL / FAILED
   "fileRead": {
     "readType": "FILE",
-    "location": "/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties",
+    "location": "/webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties",
     "resolvedFilePath": "/webapp/…/date_config.properties",
     "exists": true, "readable": true, "loaded": true,
     "sizeBytes": 512,
@@ -213,7 +213,7 @@ requestId=…, timestamp=…, status=SUCCESS, elapsedMs=12
 
 [1] ファイル読み（war の外のファイルを直接読む）
   readType        : FILE
-  location        : /webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties
+  location        : /webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties
   …
   properties      : 12 件
       config.origin = filesystem
@@ -245,7 +245,7 @@ requestId=…, timestamp=…, status=SUCCESS, elapsedMs=12
 
 | 設定 | 環境変数 | 既定値 | 内容 |
 |---|---|---|---|
-| `file-path` | `DATE_CONFIG_FILE_PATH` | `/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties` | ファイル読みの対象 |
+| `file-path` | `DATE_CONFIG_FILE_PATH` | `/webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties` | ファイル読みの対象 |
 | `resource-name` | `DATE_CONFIG_RESOURCE_NAME` | `jp/iwin/base/tango/date_config.properties` | リソース読みの対象（先頭スラッシュ無し） |
 | `charset` | `DATE_CONFIG_CHARSET` | `UTF-8` | 復号に使う文字セット |
 | `include-raw-text` | `DATE_CONFIG_INCLUDE_RAW_TEXT` | `true` | 生テキストをレスポンス・ログに載せるか |

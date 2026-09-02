@@ -38,7 +38,7 @@ class NewApiWiringTest {
             context.refresh();
 
             DateConfigService dateConfigService = context.getBean(DateConfigService.class);
-            assertEquals("/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties",
+            assertEquals("/webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties",
                     dateConfigService.getFilePath());
             assertEquals("jp/iwin/base/tango/date_config.properties", dateConfigService.getResourceName());
             assertEquals("WEB-INF/classes/jp/iwin/base/tango/date_config.properties",

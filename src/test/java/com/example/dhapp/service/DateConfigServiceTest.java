@@ -37,7 +37,7 @@ class DateConfigServiceTest {
     void setUp() throws IOException {
         configFile = tempDir.resolve("date_config.properties");
         Files.writeString(configFile, """
-                config.source=file:/webapp/webapp9mf02/serverlets/jp/iwin/base/tango/date_config.properties
+                config.source=file:/webapp/webapp9mf02/servlets/jp/iwin/base/tango/date_config.properties
                 config.origin=filesystem
                 config.revision=1
                 date.format=yyyy-MM-dd
