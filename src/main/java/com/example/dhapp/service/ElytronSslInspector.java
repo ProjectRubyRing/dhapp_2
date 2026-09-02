@@ -143,6 +143,34 @@ public class ElytronSslInspector {
     }
 
     /**
+     * elytron に定義されている {@code key-store} の名前を列挙する。
+     *
+     * <p>「JBoss EAP 側で管理しているトラストストア」の実体を探すため、
+     * {@code /subsystem=elytron/key-store=*:read-resource} 相当の情報を外へ出す。</p>
+     */
+    public List<String> keyStoreNames() {
+        try {
+            return childNames(ManagementFactory.getPlatformMBeanServer(), CHILD_KEY_STORE);
+        } catch (Exception e) {
+            log.warn("Failed to enumerate elytron key-store resources. reason={}", e.toString());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 指定した elytron {@code key-store} の属性（{@code path} / {@code relative-to} /
+     * {@code type} など）を返す。存在しない場合は null。
+     */
+    public Map<String, String> keyStoreAttributes(String name) {
+        try {
+            return childAttributes(ManagementFactory.getPlatformMBeanServer(), CHILD_KEY_STORE, name);
+        } catch (Exception e) {
+            log.warn("Failed to read elytron key-store={} . reason={}", name, e.toString());
+            return null;
+        }
+    }
+
+    /**
      * ある種別の子リソース名を列挙する（{@code /subsystem=elytron/trust-manager=*} 相当）。
      */
     private List<String> childNames(MBeanServer server, String childType) {

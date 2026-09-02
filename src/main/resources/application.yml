@@ -78,6 +78,46 @@ app:
       trust-manager: ${TLS_ELYTRON_TRUST_MANAGER:cacertTrustManager}
       client-ssl-context: ${TLS_ELYTRON_CLIENT_SSL_CONTEXT:cacertClientSslContext}
 
+  # ===== date_config.properties の読み込み確認（ファイル読み vs リソース読み） =====
+  # GET /api/config/date-config の設定。詳細は CONFIG_READ_API.md を参照。
+  config:
+    date-config:
+      # ★ファイル読みの対象。war の外・AP サーバのファイルシステム上のファイル。
+      file-path: ${DATE_CONFIG_FILE_PATH:/webapp/webapp9mf02/serverlets/jp/iwin/tango/date_config.properties}
+      # ★リソース読みの対象。war にアーカイブ済み（デプロイ後は WEB-INF/classes 配下）。
+      # ClassLoader#getResource に渡す名前なので先頭のスラッシュは付けない。
+      resource-name: ${DATE_CONFIG_RESOURCE_NAME:jp/iwin/tango/date_config.properties}
+      # 読み取ったバイト列を復号する文字セット。復号できない byte 列があれば
+      # charsetMismatch=true として報告する（値は文字化けした状態で読み進める）。
+      charset: ${DATE_CONFIG_CHARSET:UTF-8}
+      # 生テキスト（コメント込み）をレスポンス・ログに載せるか。
+      include-raw-text: ${DATE_CONFIG_INCLUDE_RAW_TEXT:true}
+
+  # ===== secure-api への HTTPS 接続確認（JVM / JBoss EAP の各トラストストア） =====
+  # GET /api/secure-api/call ・ GET /api/secure-api/truststores の設定。
+  # 既定値は別リポジトリ Container_Compose_file の compose 定義に合わせている。
+  # 詳細は SECURE_API_TLS.md を参照。
+  secure-api:
+    # secure-api へ直接（WireMock。--disable-http のため HTTPS 必須）
+    url: ${SECURE_API_URL:https://secure-api:8443/api/v1/ping}
+    # ALB で TLS 終端 → secure-api へ再暗号化する経路（target=alb）
+    via-alb-url: ${SECURE_API_VIA_ALB_URL:https://alb/secure/v1/ping}
+    connect-timeout-ms: ${SECURE_API_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${SECURE_API_READ_TIMEOUT_MS:5000}
+    # JBoss EAP(Elytron) が管理するトラストストア。
+    # 位置は「truststore-path → elytron の key-store（path / relative-to）→
+    # ${jboss.server.config.dir}/<truststore-file-name>」の順に解決する。
+    jboss:
+      # 実ファイルを直接指定する場合のみ設定する（空なら elytron の管理モデルから解決）。
+      truststore-path: ${JBOSS_TRUSTSTORE_FILE:}
+      truststore-password: ${JBOSS_TRUSTSTORE_PASSWORD:changeit}
+      # 空ならファイルの中身から自動判別（PKCS12 / JKS）。
+      truststore-type: ${JBOSS_TRUSTSTORE_TYPE:}
+      # jboss-cli で定義した elytron の key-store 名。
+      elytron-key-store: ${SECURE_API_ELYTRON_KEY_STORE:appTrustStore}
+      # 管理モデルから解決できなかった場合に ${jboss.server.config.dir} 配下で探すファイル名。
+      truststore-file-name: ${JBOSS_TRUSTSTORE_FILE_NAME:jboss-truststore.p12}
+
 # ===== ログ出力 =====
 # ファイル出力先・フォーマットは src/main/resources/logback-spring.xml で構成する。
 # 出力ルートは環境変数 LOG_OUT_DIR で指定する（未設定時は ./logs）。
