@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.dhapp.dto.ErrorResponse;
-import com.example.dhapp.service.DummyPdfService;
 
 /**
  * error.log 出力の検証用 API。
@@ -36,12 +35,6 @@ public class LogTestController {
 
     private static final Logger log = LoggerFactory.getLogger(LogTestController.class);
 
-    private final DummyPdfService dummyPdfService;
-
-    public LogTestController(DummyPdfService dummyPdfService) {
-        this.dummyPdfService = dummyPdfService;
-    }
-
     /**
      * @param count 出力するエラーの件数（既定 1）。複数イベントの区切りを確認したい場合に使う。
      */
@@ -52,9 +45,6 @@ public class LogTestController {
         String requestId = UUID.randomUUID().toString();
         int total = Math.max(1, Math.min(count, 100));
         log.info("POST /api/log/error-test received. requestId={}, count={}", requestId, total);
-
-        // 各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ "DUMMY" と記載した PDF を生成する。
-        dummyPdfService.createDummyPdf("log-error-test");
 
         for (int i = 1; i <= total; i++) {
             try {

@@ -114,6 +114,8 @@ XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=
 | DB のみ | `POST /api/db/execute` | DHCOMAP/DHINFAP への 2PC INSERT のみ（`failMode` でロールバック検証可） |
 | ElastiCache のみ | `POST /api/cache/execute` | Valkey へ保存し、読み戻した内容を返す |
 | 外部 API のみ | `POST /api/external/execute` | 設定 URL へ HTTP POST し結果を返す |
+| 外部 API（GET） | `GET /api/external-get/execute` | 設定 URL（POST 版とは別設定）へ HTTP GET し、ステータスとレスポンス本文の先頭を返す |
+| SQS 送信 | `POST /api/sqs/send` | 設定したキューへ半角スペース 1 文字を SendMessage し、MessageId と本文の MD5 を返す |
 | ファイルアップロード | `POST /api/file/upload` | multipart で受け取ったファイルを AP サーバのテンポラリフォルダへ保存し、保存場所とサイズをログ・レスポンスに出力 |
 | アップロード設定確認 | `GET /api/file/upload-info` | 保存先テンポラリフォルダと適用中のサイズ上限を返す |
 | HTTPS 通信（自己署名証明書） | `POST /api/tls/call` | 指定 URL へ、JVM トラストストアの `cacert.crt` で検証しながら HTTPS 通信する（`GET /api/tls/call?url=...` も可） |
@@ -124,6 +126,7 @@ XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=
 | エラーログ検証 | `POST /api/log/error-test` | ネストした例外を `error.log` に出力する（HTTP 500 にはしない） |
 
 リクエストボディは JSON 系 API 共通（`sessionId`, `userId` は必須。`message` は任意。`failMode` は DB のみ有効）。
+外部 API（GET）と SQS 送信 API はリクエストボディ不要（送信先はどちらも設定値のみで決まる）。
 ファイルアップロード API のみ `multipart/form-data` で受け取る（**詳細は [FILE_UPLOAD_API.md](FILE_UPLOAD_API.md)**）。
 TLS 系 API のリクエストボディは独自形式（**詳細は [TLS_SELFSIGNED_API.md](TLS_SELFSIGNED_API.md)**）。
 設定ファイル読み込み確認 API はクエリパラメータのみ（**詳細は [CONFIG_READ_API.md](CONFIG_READ_API.md)**）。
@@ -157,6 +160,16 @@ curl -i -X POST http://localhost:8080/iwinmichl/api/cache/execute \
 curl -i -X POST http://localhost:8080/iwinmichl/api/external/execute \
   -H 'Content-Type: application/json' \
   -d '{"sessionId":"ext-001","userId":"user-001","message":"hello"}'
+```
+
+外部 API（GET）（ステータスとレスポンス本文の先頭が返る）:
+```
+curl -s http://localhost:8080/iwinmichl/api/external-get/execute | jq .
+```
+
+SQS 送信（半角スペース 1 文字を送る。`md5Matched` が `true` なら本文がそのまま受け付けられている）:
+```
+curl -s -X POST http://localhost:8080/iwinmichl/api/sqs/send | jq .
 ```
 
 2PC ロールバック検証（DB のみ API で。両 DB に INSERT されないこと）:
@@ -363,9 +376,95 @@ curl -s http://localhost:8080/iwinmichl/api/secure-api/call \
 登録状態を確認できる。判定の読み方・レスポンス全項目・設定一覧は
 **[SECURE_API_TLS.md](SECURE_API_TLS.md)** を参照。
 
+## 外部 API への HTTP GET
+
+`GET /api/external-get/execute` は、設定した URL へ HTTP GET し、**HTTP ステータス**と
+**レスポンス本文の先頭**（既定 500 文字）を返す。HTTP POST の外部 API（`/api/external/execute`・
+`app.external-api.*`）とは別コントローラ・別設定（`app.external-get-api.*`）で、送信先 URL は設定値のみで
+決まる（リクエストで URL は指定できない）。
+
+- 4xx / 5xx もそのまま `externalApiStatus` に入り、エラー本文の先頭が `bodyHead` に入る（`status` は `SUCCESS`）。
+- 接続不可・タイムアウト時は HTTP 500 にはせず、`status=EXTERNAL_API_FAILED` と `message` を返す。
+- 本文は先頭の指定文字数だけを読み、Content-Type の charset（無ければ UTF-8）で復号する。
+  指定文字数より長い場合は `bodyTruncated=true`。
+
+| 環境変数 | 既定値 | 内容 |
+|---|---|---|
+| `EXTERNAL_GET_API_URL` | `http://localhost:9090/health` | GET する URL |
+| `EXTERNAL_GET_API_CONNECT_TIMEOUT_MS` | `2000` | 接続タイムアウト |
+| `EXTERNAL_GET_API_READ_TIMEOUT_MS` | `5000` | 読取タイムアウト |
+| `EXTERNAL_GET_API_BODY_HEAD_CHARS` | `500` | レスポンス・ログに載せる本文の先頭文字数 |
+
+```
+{
+  "status": "SUCCESS",
+  "requestId": "…",
+  "url": "http://localhost:9090/health",
+  "externalApiStatus": 200,
+  "contentType": "application/json",
+  "contentLength": 15,
+  "bodyHead": "{\"status\":\"UP\"}",
+  "bodyHeadChars": 15,
+  "bodyTruncated": false,
+  "elapsedMs": 12,
+  "message": null
+}
+```
+
+## SQS への送信
+
+`POST /api/sqs/send` は、設定したキューへ**半角スペース 1 文字（U+0020）をメッセージ本文として
+SendMessage** し、SQS が返した `MessageId` と本文の MD5 を返す。`md5OfMessageBody` が
+半角スペースの MD5（`7215ee9c7d9dc229d2921a40e899ec5f`）と一致すれば `md5Matched=true`。
+
+- 認証情報は AWS SDK for Java v2 の既定チェーン（環境変数・Web Identity・ECS タスクロール・
+  EC2 インスタンスプロファイル等）から取得する。IAM には対象キューへの `sqs:SendMessage` が必要。
+- リージョンは `SQS_REGION` → キュー URL のホスト名（`sqs.<region>.amazonaws.com`）→ SDK 既定
+  （`AWS_REGION` 等）の順に解決する。どれを使ったかは `regionSource` に出る。
+- SQS クライアントは初回呼び出し時に生成するため、`SQS_QUEUE_URL` 未設定やリージョン未解決でも
+  アプリの起動は止まらない（未設定なら `status=SQS_NOT_CONFIGURED`）。
+- FIFO キュー（URL が `.fifo` で終わる）の場合は `MessageGroupId` に `SQS_MESSAGE_GROUP_ID`、
+  `MessageDeduplicationId` にリクエストごとの `requestId` を付ける（本文が常に同じでも重複排除されない）。
+- 送信に失敗しても HTTP 500 にはせず、`status=SQS_SEND_FAILED` と `errorType` / `awsErrorCode` /
+  `httpStatus` / `awsRequestId` / `message` を返す。
+
+| 環境変数 | 既定値 | 内容 |
+|---|---|---|
+| `SQS_QUEUE_URL` | （空） | 送信先キューの URL |
+| `SQS_REGION` | （空） | リージョンの明示指定 |
+| `SQS_ENDPOINT` | （空） | エンドポイントの上書き（VPC エンドポイント・LocalStack 等）。空なら SDK 既定 |
+| `SQS_CONNECT_TIMEOUT_MS` | `3000` | 接続タイムアウト |
+| `SQS_READ_TIMEOUT_MS` | `5000` | 読取タイムアウト |
+| `SQS_MESSAGE_GROUP_ID` | `dhapp` | FIFO キューの場合の `MessageGroupId` |
+
+```
+{
+  "status": "SUCCESS",
+  "requestId": "…",
+  "queueUrl": "https://sqs.ap-northeast-1.amazonaws.com/123456789012/dhapp-queue",
+  "region": "ap-northeast-1",
+  "regionSource": "queue-url",
+  "endpoint": null,
+  "fifoQueue": false,
+  "messageBody": " ",
+  "messageBodyHex": "20",
+  "messageId": "…",
+  "md5OfMessageBody": "7215ee9c7d9dc229d2921a40e899ec5f",
+  "expectedMd5OfMessageBody": "7215ee9c7d9dc229d2921a40e899ec5f",
+  "md5Matched": true,
+  "elapsedMs": 85,
+  …
+}
+```
+
+受信側で確認する場合（本文が `" "` であること）:
+```
+aws sqs receive-message --queue-url "$SQS_QUEUE_URL" --query 'Messages[].Body'
+```
+
 ## ログ出力
 
-各機能（demo / db / cache / external / file / tls / config / secure-api）は、REST API で処理した内容
+各機能（demo / db / cache / external / external-get / sqs / file / tls / config / secure-api）は、REST API で処理した内容
 （リクエスト内容・処理ステップ・レスポンス・処理時間）を詳細にログへ出力する。ファイルアップロード
 API では**保存先の絶対パスと保存したファイルのサイズ**が INFO で出力される。出力先・フォーマットは
 `src/main/resources/logback-spring.xml` で構成し、出力ルートは **環境変数 `LOG_OUT_DIR`** で指定する。
@@ -404,22 +503,7 @@ API では**保存先の絶対パスと保存したファイルのサイズ**が
 | asyncdriver_xxxxx.err | `${LOG_OUT_DIR}/asyncdriver_xxxxx.err` |
 | gc.log | `${LOG_OUT_DIR}/mid/gc.log` |
 
-さらに、環境変数 **`DATA_OUTPUT_DIR`** で指定したデータ出力ディレクトリに、各 REST API
-（demo / db / cache / external / file / log）の呼び出しごとに `dummy.pdf` を生成する（未設定時は `./data`）。
-この `dummy.pdf` はログのテキストではなく、**Apache PDFBox で生成した本物の PDF**（`DUMMY` という
-文字列を記載）で、`com.example.dhapp.service.DummyPdfService` が呼び出しのたびに上書き作成する。
-ディレクトリが無い場合は自動作成する。
-
-| ファイル | パス | 内容 |
-|---|---|---|
-| dummy.pdf | `${DATA_OUTPUT_DIR}/dummy.pdf` | PDFBox 生成の PDF（`DUMMY` を記載） |
-
-```
-# Linux/WildFly
-export DATA_OUTPUT_DIR=/var/data/dhapp
-```
-
-`LOG_OUT_DIR` 未設定時はカレントディレクトリ配下 `./logs` を使う。指定例:
+`LOG_OUT_DIR` 未設定時は `/mnt/logs/front/logs/inter-api` を使う。指定例:
 
 ```
 # Linux/WildFly

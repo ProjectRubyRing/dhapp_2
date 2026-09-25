@@ -18,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.dhapp.dto.FileUploadResponse;
 import com.example.dhapp.dto.UploadInfoResponse;
-import com.example.dhapp.service.DummyPdfService;
 import com.example.dhapp.service.FileUploadService;
 import com.example.dhapp.service.FileUploadService.ResolvedTempDir;
 
@@ -48,11 +47,9 @@ public class FileUploadController {
     private static final String FILE_PART_NAME = "file";
 
     private final FileUploadService fileUploadService;
-    private final DummyPdfService dummyPdfService;
 
-    public FileUploadController(FileUploadService fileUploadService, DummyPdfService dummyPdfService) {
+    public FileUploadController(FileUploadService fileUploadService) {
         this.fileUploadService = fileUploadService;
-        this.dummyPdfService = dummyPdfService;
     }
 
     /**
@@ -81,9 +78,6 @@ public class FileUploadController {
                         + "contentType={}, contentLength={}",
                 requestId, file.getOriginalFilename(), file.getSize(), file.getContentType(),
                 request.getContentLengthLong());
-
-        // 各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ "DUMMY" と記載した PDF を生成する。
-        dummyPdfService.createDummyPdf("file-upload");
 
         FileUploadResponse response = fileUploadService.store(file, FILE_PART_NAME, note, requestId);
 

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.dhapp.dto.DateConfigResponse;
 import com.example.dhapp.service.DateConfigService;
-import com.example.dhapp.service.DummyPdfService;
 
 /**
  * {@code date_config.properties} を<b>ファイル読み</b>と<b>リソース読み</b>の 2 経路で読み、
@@ -50,11 +49,9 @@ public class DateConfigController {
     private static final Logger log = LoggerFactory.getLogger(DateConfigController.class);
 
     private final DateConfigService dateConfigService;
-    private final DummyPdfService dummyPdfService;
 
-    public DateConfigController(DateConfigService dateConfigService, DummyPdfService dummyPdfService) {
+    public DateConfigController(DateConfigService dateConfigService) {
         this.dateConfigService = dateConfigService;
-        this.dummyPdfService = dummyPdfService;
     }
 
     /**
@@ -86,9 +83,6 @@ public class DateConfigController {
         String requestId = UUID.randomUUID().toString();
         log.info("/api/config/date-config received. requestId={}, filePath={}, resource={}, format={}",
                 requestId, dateConfigService.getFilePath(), dateConfigService.getResourceName(), format);
-
-        // 他の REST API と同様、呼び出しごとに DATA_OUTPUT_DIR 配下へダミー PDF を生成する。
-        dummyPdfService.createDummyPdf("date-config");
 
         DateConfigResponse response = dateConfigService.read(requestId);
 

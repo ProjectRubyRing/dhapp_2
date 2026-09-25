@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.dhapp.dto.DbResponse;
 import com.example.dhapp.dto.DemoRequest;
-import com.example.dhapp.service.DummyPdfService;
 import com.example.dhapp.service.TransactionalDbService;
 
 /**
@@ -33,11 +32,9 @@ public class DbController {
     private static final Logger log = LoggerFactory.getLogger(DbController.class);
 
     private final TransactionalDbService transactionalDbService;
-    private final DummyPdfService dummyPdfService;
 
-    public DbController(TransactionalDbService transactionalDbService, DummyPdfService dummyPdfService) {
+    public DbController(TransactionalDbService transactionalDbService) {
         this.transactionalDbService = transactionalDbService;
-        this.dummyPdfService = dummyPdfService;
     }
 
     @PostMapping(value = "/execute",
@@ -51,9 +48,6 @@ public class DbController {
         log.debug("POST /api/db/execute request body detail. requestId={}, sessionId={}, userId={}, messageLen={}, failMode={}",
                 requestId, request.getSessionId(), request.getUserId(),
                 request.getMessage() == null ? 0 : request.getMessage().length(), request.getFailMode());
-
-        // 各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ "DUMMY" と記載した PDF を生成する。
-        dummyPdfService.createDummyPdf("db");
 
         // 2PC INSERT。例外時は両方ロールバックされ、GlobalExceptionHandler が 500 を返す。
         transactionalDbService.insertIntoBothDatabases(request, requestId);

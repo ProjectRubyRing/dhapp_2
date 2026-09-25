@@ -23,7 +23,21 @@
         <!-- OpenJDK 21 -->
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- AWS SDK for Java v2（SQS 送信 API で使用） -->
+        <aws-sdk.version>2.54.18</aws-sdk.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Spring MVC (REST) -->
@@ -61,15 +75,29 @@
         </dependency>
 
         <!--
-            PDF 生成ライブラリ（Apache PDFBox）。純 Java 実装で外部フォント不要
-            （標準 14 フォントを使用）。各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ
-            "DUMMY" と記載した本物の PDF（dummy.pdf）を生成するために使用する。
-            PDFBox 3.x はロギングに SLF4J を使うため、既存の Logback と競合しない。
+            Amazon SQS クライアント（POST /api/sqs/send）。
+            SDK 既定の HTTP クライアント（apache5-client / netty-nio-client）は除外し、
+            JDK の HttpURLConnection を使う url-connection-client だけを war に含める。
+            apache5-client が引き込む httpclient5 は Spring Boot の依存管理で別バージョンに
+            固定されうるため、組み合わせ不整合を避ける目的もある。
         -->
         <dependency>
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-            <version>3.0.3</version>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache5-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
         </dependency>
 
         <!--

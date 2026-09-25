@@ -553,5 +553,3 @@ TLS config check done. requestId=..., status=OK, ok=10, ng=0, unknown=0, probe=f
 ハンドシェイク失敗時は `error.log` にスタックトレースが出る。
 JSSE 側の詳細を見たい場合は起動パラメータに `-Djavax.net.debug=ssl:handshake:trustmanager` を追加する
 （出力量が非常に多いので調査時のみ）。
-
-なお、他の API と同じく呼び出しのたびに `${DATA_OUTPUT_DIR}/dummy.pdf` も生成される。

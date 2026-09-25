@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.dhapp.dto.TlsCallRequest;
 import com.example.dhapp.dto.TlsCallResponse;
 import com.example.dhapp.dto.TlsConfigResponse;
-import com.example.dhapp.service.DummyPdfService;
 import com.example.dhapp.service.TlsConfigCheckService;
 import com.example.dhapp.service.TlsHttpsClient;
 
@@ -49,14 +48,11 @@ public class TlsController {
 
     private final TlsHttpsClient tlsHttpsClient;
     private final TlsConfigCheckService tlsConfigCheckService;
-    private final DummyPdfService dummyPdfService;
 
     public TlsController(TlsHttpsClient tlsHttpsClient,
-            TlsConfigCheckService tlsConfigCheckService,
-            DummyPdfService dummyPdfService) {
+            TlsConfigCheckService tlsConfigCheckService) {
         this.tlsHttpsClient = tlsHttpsClient;
         this.tlsConfigCheckService = tlsConfigCheckService;
-        this.dummyPdfService = dummyPdfService;
     }
 
     /**
@@ -76,9 +72,6 @@ public class TlsController {
         String requestId = UUID.randomUUID().toString();
         log.info("POST /api/tls/call received. requestId={}, url={}, method={}",
                 requestId, request.getUrl(), request.getMethod());
-
-        // 各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ "DUMMY" と記載した PDF を生成する。
-        dummyPdfService.createDummyPdf("tls-call");
 
         TlsCallResponse response = tlsHttpsClient.call(request.getUrl(), request.getMethod(),
                 request.getBody(), request.getContentType(), requestId);
@@ -106,8 +99,6 @@ public class TlsController {
         String requestId = UUID.randomUUID().toString();
         log.info("GET /api/tls/call received. requestId={}, url={}", requestId, url);
 
-        dummyPdfService.createDummyPdf("tls-call");
-
         TlsCallResponse response = tlsHttpsClient.call(url, "GET", null, null, requestId);
 
         log.info("GET /api/tls/call done. requestId={}, status={}, httpStatus={}, verifiedByTrustStore={}, "
@@ -134,8 +125,6 @@ public class TlsController {
 
         String requestId = UUID.randomUUID().toString();
         log.info("GET /api/tls/config received. requestId={}, probe={}", requestId, probe);
-
-        dummyPdfService.createDummyPdf("tls-config");
 
         TlsConfigResponse response = tlsConfigCheckService.check(probe, requestId);
 

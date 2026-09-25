@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.dhapp.dto.CacheResponse;
 import com.example.dhapp.dto.DemoRequest;
-import com.example.dhapp.service.DummyPdfService;
 import com.example.dhapp.service.ValkeySessionService;
 
 /**
@@ -34,11 +33,9 @@ public class CacheController {
     private static final Logger log = LoggerFactory.getLogger(CacheController.class);
 
     private final ValkeySessionService valkeySessionService;
-    private final DummyPdfService dummyPdfService;
 
-    public CacheController(ValkeySessionService valkeySessionService, DummyPdfService dummyPdfService) {
+    public CacheController(ValkeySessionService valkeySessionService) {
         this.valkeySessionService = valkeySessionService;
-        this.dummyPdfService = dummyPdfService;
     }
 
     @PostMapping(value = "/execute",
@@ -52,9 +49,6 @@ public class CacheController {
         log.debug("POST /api/cache/execute request body detail. requestId={}, sessionId={}, userId={}, messageLen={}",
                 requestId, request.getSessionId(), request.getUserId(),
                 request.getMessage() == null ? 0 : request.getMessage().length());
-
-        // 各 REST API 呼び出し時に DATA_OUTPUT_DIR 配下へ "DUMMY" と記載した PDF を生成する。
-        dummyPdfService.createDummyPdf("cache");
 
         String sessionKey = valkeySessionService.saveSession(request, requestId);
         Map<String, String> stored = valkeySessionService.getSession(request.getSessionId());

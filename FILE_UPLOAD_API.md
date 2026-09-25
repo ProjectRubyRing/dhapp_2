@@ -388,8 +388,6 @@ sha256sum /tmp/sample_1mb.bin
 `contentLength`（リクエスト全体）は multipart の boundary やヘッダを含むため、
 ファイル本体の `sizeBytes` よりわずかに大きくなる。
 
-他の REST API と同様、呼び出しごとに `${DATA_OUTPUT_DIR}/dummy.pdf` も生成される。
-
 ---
 
 ## 7. サイズ上限超過時の詳細なレスポンス

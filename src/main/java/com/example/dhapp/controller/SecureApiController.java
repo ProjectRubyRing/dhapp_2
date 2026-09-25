@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.dhapp.dto.SecureApiCallResponse;
 import com.example.dhapp.dto.TrustStoresResponse;
-import com.example.dhapp.service.DummyPdfService;
 import com.example.dhapp.service.SecureApiTlsService;
 
 /**
@@ -46,12 +45,9 @@ public class SecureApiController {
     private static final Logger log = LoggerFactory.getLogger(SecureApiController.class);
 
     private final SecureApiTlsService secureApiTlsService;
-    private final DummyPdfService dummyPdfService;
 
-    public SecureApiController(SecureApiTlsService secureApiTlsService,
-            DummyPdfService dummyPdfService) {
+    public SecureApiController(SecureApiTlsService secureApiTlsService) {
         this.secureApiTlsService = secureApiTlsService;
-        this.dummyPdfService = dummyPdfService;
     }
 
     /**
@@ -111,9 +107,6 @@ public class SecureApiController {
         log.info("/api/secure-api/call received. requestId={}, url={}, target={}, trust={}, method={}",
                 requestId, url, target, trust, method);
 
-        // 他の REST API と同様、呼び出しごとに DATA_OUTPUT_DIR 配下へダミー PDF を生成する。
-        dummyPdfService.createDummyPdf("secure-api-call");
-
         SecureApiCallResponse response =
                 secureApiTlsService.call(url, target, trust, method, body, contentType, requestId);
 
@@ -146,8 +139,6 @@ public class SecureApiController {
 
         String requestId = UUID.randomUUID().toString();
         log.info("/api/secure-api/truststores received. requestId={}", requestId);
-
-        dummyPdfService.createDummyPdf("secure-api-truststores");
 
         TrustStoresResponse response = secureApiTlsService.inspectTrustStores(requestId);
 

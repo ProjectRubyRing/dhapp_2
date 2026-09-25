@@ -7,7 +7,7 @@
     ログ出力はこの war 内の Logback（Spring Boot 標準バインディング）が担う。
 
     出力先はすべて環境変数 LOG_OUT_DIR で指定したディレクトリ配下に集約する。
-    （未設定時のローカル実行用デフォルトは ./logs）
+    （未設定時は /mnt/logs/front/logs/inter-api）
 
       ${LOG_OUT_DIR}/application.log   … 各 REST API 機能の処理内容を詳細に記録（アプリログ）
       ${LOG_OUT_DIR}/error.log        … ERROR レベルのみ。Java 例外スタックトレース形式で出力。
@@ -17,15 +17,8 @@
 -->
 <configuration>
 
-    <!-- 出力ルートディレクトリ（環境変数 LOG_OUT_DIR）。未設定ならカレント配下 ./logs -->
-    <property name="LOG_OUT_DIR" value="${LOG_OUT_DIR:-logs}"/>
-
-    <!--
-        データ出力ルートディレクトリ（環境変数 DATA_OUTPUT_DIR、未設定ならカレント配下 ./data）配下の
-        dummy.pdf は、以前はここ（Logback アペンダ）で処理内容ログをテキストとして出力していたが、
-        現在は Apache PDFBox で「DUMMY」を書き込んだ本物の PDF を各 REST API 呼び出し時に生成する
-        （com.example.dhapp.service.DummyPdfService）。そのため Logback 側の dummy.pdf 出力は行わない。
-    -->
+    <!-- 出力ルートディレクトリ（環境変数 LOG_OUT_DIR）。未設定なら /mnt/logs/front/logs/inter-api -->
+    <property name="LOG_OUT_DIR" value="${LOG_OUT_DIR:-/mnt/logs/front/logs/inter-api}"/>
 
     <!-- アプリログ用パターン（詳細・requestId 追跡しやすい形式） -->
     <property name="APP_PATTERN"
@@ -315,7 +308,6 @@
     <!--
         アプリ本体（各 REST API 機能）は DEBUG まで詳細に出力する。
         application.log に加え、上記すべてのファイルへ同じ処理内容を必ず出力する。
-        （DATA_OUTPUT_DIR/dummy.pdf は Logback ではなく DummyPdfService が PDFBox で生成する。）
         additivity=true のまま root にも伝播させ、server.log（全体）と error.log（ERROR のみ）にも載せる。
     -->
     <logger name="com.example.dhapp" level="DEBUG">

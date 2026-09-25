@@ -53,6 +53,32 @@ app:
     connect-timeout-ms: ${EXTERNAL_API_CONNECT_TIMEOUT_MS:2000}
     read-timeout-ms: ${EXTERNAL_API_READ_TIMEOUT_MS:5000}
 
+  # ===== 外部 REST API（HTTP GET） =====
+  # GET /api/external-get/execute の設定。上の external-api（HTTP POST）とは独立した設定。
+  external-get-api:
+    url: ${EXTERNAL_GET_API_URL:http://localhost:9090/health}
+    connect-timeout-ms: ${EXTERNAL_GET_API_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${EXTERNAL_GET_API_READ_TIMEOUT_MS:5000}
+    # レスポンス本文のうち、API のレスポンス・ログに載せる先頭の文字数。
+    body-head-chars: ${EXTERNAL_GET_API_BODY_HEAD_CHARS:500}
+
+  # ===== Amazon SQS =====
+  # POST /api/sqs/send の設定。キューへ半角スペース 1 文字をメッセージ本文として SendMessage する。
+  # 認証情報は AWS SDK の既定チェーン（環境変数・Web Identity・ECS タスクロール・
+  # EC2 インスタンスプロファイル等）から取得する。
+  sqs:
+    # 送信先キューの URL。未設定なら API は SQS_NOT_CONFIGURED を返す（起動は止めない）。
+    queue-url: ${SQS_QUEUE_URL:}
+    # 空なら queue-url のホスト名（sqs.<region>.amazonaws.com）→ SDK 既定（AWS_REGION 等）の順で解決する。
+    region: ${SQS_REGION:}
+    # エンドポイントの上書き（VPC エンドポイント・LocalStack 等）。空なら SDK 既定。
+    endpoint: ${SQS_ENDPOINT:}
+    connect-timeout-ms: ${SQS_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${SQS_READ_TIMEOUT_MS:5000}
+    # FIFO キュー（URL が .fifo で終わる）の場合のみ使う MessageGroupId。
+    # MessageDeduplicationId はリクエストごとの requestId を使う（本文が常に同じでも重複排除されない）。
+    message-group-id: ${SQS_MESSAGE_GROUP_ID:dhapp}
+
   # ===== 自己署名証明書(cacert.crt)による HTTPS 通信の確認 =====
   # POST /api/tls/call ・ GET /api/tls/config の設定。詳細は TLS_SELFSIGNED_API.md を参照。
   #
@@ -120,7 +146,7 @@ app:
 
 # ===== ログ出力 =====
 # ファイル出力先・フォーマットは src/main/resources/logback-spring.xml で構成する。
-# 出力ルートは環境変数 LOG_OUT_DIR で指定する（未設定時は ./logs）。
+# 出力ルートは環境変数 LOG_OUT_DIR で指定する（未設定時は /mnt/logs/front/logs/inter-api）。
 #   ${LOG_OUT_DIR}/application.log … 各 REST API 機能の処理内容を詳細に記録
 #   ${LOG_OUT_DIR}/error.log       … ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用）
 #   ${LOG_OUT_DIR}/mid/server.log  … JBoss EAP サーバログ相当（EAP 既定フォーマット・全体）

@@ -13,11 +13,13 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.ClassPathResource;
 
 import com.example.dhapp.controller.DateConfigController;
+import com.example.dhapp.controller.ExternalGetApiController;
 import com.example.dhapp.controller.SecureApiController;
+import com.example.dhapp.controller.SqsController;
 
 /**
- * 新設した 2 つの API のビーン定義と、{@code application.yml} の
- * {@code @Value} プレースホルダが解決できることの確認。
+ * 新設した API（date-config / secure-api / external-get / sqs）のビーン定義と、
+ * {@code application.yml} の {@code @Value} プレースホルダが解決できることの確認。
  *
  * <p>DB / Valkey には触れない最小のコンテキストだけを立てる（デプロイして初めて
  * 「プレースホルダが解決できない」と分かる事態を避けるため）。</p>
@@ -33,8 +35,9 @@ class NewApiWiringTest {
             context.register(PropertySourcesPlaceholderConfigurer.class,
                     TrustStoreInspector.class, ElytronSslInspector.class, TlsHttpsClient.class,
                     DeploymentOverlayInspector.class, DateConfigService.class,
-                    SecureApiTlsService.class, DummyPdfService.class,
-                    DateConfigController.class, SecureApiController.class);
+                    SecureApiTlsService.class, ExternalGetApiClient.class, SqsSendService.class,
+                    DateConfigController.class, SecureApiController.class,
+                    ExternalGetApiController.class, SqsController.class);
             context.refresh();
 
             DateConfigService dateConfigService = context.getBean(DateConfigService.class);
@@ -48,8 +51,17 @@ class NewApiWiringTest {
             assertEquals("https://secure-api:8443/api/v1/ping", secureApiTlsService.getDirectUrl());
             assertEquals("https://alb/secure/v1/ping", secureApiTlsService.getAlbUrl());
 
+            ExternalGetApiClient externalGetApiClient = context.getBean(ExternalGetApiClient.class);
+            assertEquals("http://localhost:9090/health", externalGetApiClient.getUrl());
+            assertEquals(500, externalGetApiClient.getBodyHeadChars());
+
+            // SQS_QUEUE_URL 未設定でも（SqsClient を遅延生成するため）起動できること。
+            assertEquals("", context.getBean(SqsSendService.class).getQueueUrl());
+
             assertNotNull(context.getBean(DateConfigController.class));
             assertNotNull(context.getBean(SecureApiController.class));
+            assertNotNull(context.getBean(ExternalGetApiController.class));
+            assertNotNull(context.getBean(SqsController.class));
         }
     }
 
