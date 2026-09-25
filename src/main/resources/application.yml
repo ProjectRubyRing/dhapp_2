@@ -147,9 +147,9 @@ app:
 # ===== ログ出力 =====
 # ファイル出力先・フォーマットは src/main/resources/logback-spring.xml で構成する。
 # 出力ルートは環境変数 LOG_OUT_DIR で指定する（未設定時は /mnt/logs/front/logs/inter-api）。
-#   ${LOG_OUT_DIR}/application.log … 各 REST API 機能の処理内容を詳細に記録
-#   ${LOG_OUT_DIR}/error.log       … ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用）
-#   ${LOG_OUT_DIR}/mid/server.log  … JBoss EAP サーバログ相当（EAP 既定フォーマット・全体）
+# ファイル名の先頭にはホストの IPv4 アドレス（区切りはハイフン）が付く（例: 10-0-1-23_application.log）。
+#   ${LOG_OUT_DIR}/<IP>_application.log … 各 REST API 機能の処理内容を詳細に記録
+#   ${LOG_OUT_DIR}/<IP>_error.log       … ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用）
 # ここでのレベル設定は logback-spring.xml のロガー設定と併せて有効になる。
 logging:
   level:

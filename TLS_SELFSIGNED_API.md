@@ -541,7 +541,7 @@ curl の主な終了コード:
 
 ## 9. ログ
 
-他の API と同様、処理内容は `${LOG_OUT_DIR}/application.log` ほかへ出力される
+他の API と同様、処理内容は `${LOG_OUT_DIR}/<IP>_application.log` ほかへ出力される
 （`com.example.dhapp` ロガー、DEBUG まで）。TLS 関連では次が記録される。
 
 ```

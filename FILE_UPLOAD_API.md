@@ -374,7 +374,7 @@ sha256sum /tmp/sample_1mb.bin
 
 ### 6-4. ログ出力
 
-`${LOG_OUT_DIR}/application.log`（および `keax0003.log` ほか、他の REST API と同じ全ファイル）に
+`${LOG_OUT_DIR}/<IP>_application.log`（および `<IP>_keax0003.log` ほか、他の REST API と同じ全ファイル）に
 次の内容が出力される。**保存場所と保存したファイルのサイズは INFO で出力される。**
 
 ```
@@ -544,7 +544,8 @@ $ curl -i -X POST http://localhost:8080/iwinmichl/api/file/upload \
 curl: (56) Recv failure: Connection reset by peer
 ```
 
-どちらの場合も、AP サーバ側には必ず記録が残る。`${LOG_OUT_DIR}/mid/server.log` を確認する。
+どちらの場合も、AP サーバ側には必ず記録が残る。WildFly(JBoss EAP) 本体のサーバログ
+（`standalone/log/server.log` またはコンソール）を確認する。
 
 ```
 2026-08-04 12:31:02,770 ERROR [io.undertow.request] (default task-1) UT005023: Exception handling request to /iwinmichl/api/file/upload: java.io.IOException: UT000020: Connection terminated as request was larger than 10485760

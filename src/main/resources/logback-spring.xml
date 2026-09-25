@@ -9,33 +9,32 @@
     出力先はすべて環境変数 LOG_OUT_DIR で指定したディレクトリ配下に集約する。
     （未設定時は /mnt/logs/front/logs/inter-api）
 
-      ${LOG_OUT_DIR}/application.log   … 各 REST API 機能の処理内容を詳細に記録（アプリログ）
-      ${LOG_OUT_DIR}/error.log        … ERROR レベルのみ。Java 例外スタックトレース形式で出力。
-                                         CloudWatch Agent のマルチライン処理検証用。
-      ${LOG_OUT_DIR}/mid/server.log   … JBoss EAP のサーバログ相当。EAP 既定フォーマットで
-                                         フレームワーク／アプリを含む全ログを記録する。
+    ファイル名の先頭には、このホストの IPv4 アドレス（区切り文字をハイフンにしたもの）と
+    "_" をプレフィックスとして付ける。例: 10.0.1.23 のホストなら 10-0-1-23_application.log
+
+      ${LOG_OUT_DIR}/<IP>_application.log   … 各 REST API 機能の処理内容を詳細に記録（アプリログ）
+      ${LOG_OUT_DIR}/<IP>_error.log        … ERROR レベルのみ。Java 例外スタックトレース形式で出力。
+                                              CloudWatch Agent のマルチライン処理検証用。
 -->
 <configuration>
 
     <!-- 出力ルートディレクトリ（環境変数 LOG_OUT_DIR）。未設定なら /mnt/logs/front/logs/inter-api -->
     <property name="LOG_OUT_DIR" value="${LOG_OUT_DIR:-/mnt/logs/front/logs/inter-api}"/>
 
+    <!-- ファイル名プレフィックス用のホスト IPv4 アドレス（例: 10-0-1-23） -->
+    <define name="HOST_IP" class="com.example.dhapp.logging.HostIpPropertyDefiner"/>
+
+    <!--
+        エラーログ（<IP>_<ランダム>.err）のファイル名に使うランダム文字列（[a-zA-Z0-9]）。
+        設定読み込み時（＝起動時）に 1 回だけ生成されるため、再起動ごとに別名のファイルになる。
+    -->
+    <define name="ERR_FILE_ID" class="com.example.dhapp.logging.RandomStringPropertyDefiner">
+        <length>10</length>
+    </define>
+
     <!-- アプリログ用パターン（詳細・requestId 追跡しやすい形式） -->
     <property name="APP_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{48} - %msg%n%ex"/>
-
-    <!--
-        JBoss EAP standalone の server.log 既定パターンに合わせる。
-        EAP:  %d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n
-        （ミリ秒がカンマ区切り、レベル・カテゴリ・スレッド・メッセージ・例外）
-
-        注意: Logback の %d{...} はカンマをオプション区切り（第2引数=タイムゾーンID）と
-        解釈するため、日付パターン自体にカンマを含める場合は全体をダブルクォートで囲む。
-        囲まないと Logback 1.5 系では ZoneRulesException: Unknown time-zone ID: SSS で
-        初期化に失敗する。
-    -->
-    <property name="SERVER_PATTERN"
-              value='%d{"yyyy-MM-dd HH:mm:ss,SSS"} %-5level [%logger] (%thread) %msg%n%ex'/>
 
     <!-- ===== コンソール（開発・コンテナ標準出力用） ===== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -45,11 +44,11 @@
         </encoder>
     </appender>
 
-    <!-- ===== アプリログ: LOG_OUT_DIR/application.log ===== -->
+    <!-- ===== アプリログ: LOG_OUT_DIR/<IP>_application.log ===== -->
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/application.log</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_application.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -61,7 +60,7 @@
     </appender>
 
     <!--
-        ===== エラーログ: LOG_OUT_DIR/error.log =====
+        ===== エラーログ: LOG_OUT_DIR/<IP>_error.log =====
         ERROR レベルのみを通す。例外は %ex により標準の Java スタックトレース形式で
         （"Caused by:" / "... N more" を含めて）複数行に展開される。
         各エントリは必ず先頭がタイムスタンプで始まるため、CloudWatch Agent 側で
@@ -69,37 +68,18 @@
         スタックトレース全体を 1 イベントとして扱えることを確認できる。
     -->
     <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/error.log</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_error.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>ERROR</level>
         </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>${APP_PATTERN}</pattern>
-            <charset>UTF-8</charset>
-        </encoder>
-    </appender>
-
-    <!--
-        ===== サーバログ: LOG_OUT_DIR/mid/server.log =====
-        JBoss EAP のサーバログ相当を EAP 既定フォーマットで出力する。
-        root に接続し、Spring/WildFly 由来を含む全カテゴリのログを収集する。
-    -->
-    <appender name="SERVER_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/mid/server.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/mid/server.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder>
-            <pattern>${SERVER_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -109,15 +89,18 @@
         各 REST API（demo / db / cache / external）が処理した内容（リクエスト・処理ステップ・
         レスポンス・処理時間）を、以下の各ファイルへ「全て同じ内容」で必ず出力する。
         いずれも application.log と同じ APP_PATTERN・DEBUG まで詳細に記録する。
+        （ファイル名の先頭には <IP>_ が付く）
 
-          keax0003.log      xxxxxxxxxx.err   accesslog        tracelog
+          keax0003.log      <ランダム>.err   accesslog        tracelog
           dbiolog           inputmsglog      outputmsglog     asyncdriver.log
           authlog           connectinlog     connectoutlog    asyncdriver_xxxxx.err
+
+        <ランダム>.err の <ランダム> 部分は ERR_FILE_ID（起動ごとに生成する英数字 10 文字）。
     -->
     <appender name="KEAX_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/keax0003.log</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_keax0003.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/keax0003.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_keax0003.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -129,9 +112,9 @@
     </appender>
 
     <appender name="ERR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/xxxxxxxxxx.err</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_${ERR_FILE_ID}.err</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/xxxxxxxxxx.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_${ERR_FILE_ID}.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -143,9 +126,9 @@
     </appender>
 
     <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/accesslog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_accesslog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/accesslog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_accesslog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -157,9 +140,9 @@
     </appender>
 
     <appender name="TRACE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/tracelog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_tracelog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/tracelog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_tracelog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -171,9 +154,9 @@
     </appender>
 
     <appender name="DBIO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/dbiolog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_dbiolog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/dbiolog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_dbiolog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -185,9 +168,9 @@
     </appender>
 
     <appender name="INPUTMSG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/inputmsglog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_inputmsglog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/inputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_inputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -199,9 +182,9 @@
     </appender>
 
     <appender name="OUTPUTMSG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/outputmsglog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_outputmsglog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/outputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_outputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -213,9 +196,9 @@
     </appender>
 
     <appender name="ASYNCDRIVER_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/asyncdriver.log</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/asyncdriver.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -227,9 +210,9 @@
     </appender>
 
     <appender name="AUTH_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/authlog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_authlog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/authlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_authlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -241,9 +224,9 @@
     </appender>
 
     <appender name="CONNECTIN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/connectinlog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_connectinlog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/connectinlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_connectinlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -255,9 +238,9 @@
     </appender>
 
     <appender name="CONNECTOUT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/connectoutlog</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_connectoutlog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/connectoutlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_connectoutlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -269,32 +252,13 @@
     </appender>
 
     <!--
-        asyncdriver_xxxxx.err … xxxxxxxxxx.err と同様、拡張子 .err の固定ファイル名で出力する。
-        （xxxxx 部分はファイル名の一部としてそのまま扱う）
+        asyncdriver_xxxxx.err … 拡張子 .err の固定ファイル名で出力する。
+        （xxxxx 部分はファイル名の一部としてそのまま扱う。ランダム化はしない）
     -->
     <appender name="ASYNCDRIVER_ERR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/asyncdriver_xxxxx.err</file>
+        <file>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver_xxxxx.err</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/asyncdriver_xxxxx.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder>
-            <pattern>${APP_PATTERN}</pattern>
-            <charset>UTF-8</charset>
-        </encoder>
-    </appender>
-
-    <!--
-        ===== mid ディレクトリ配下に出力するログ: LOG_OUT_DIR/mid/gc.log =====
-        server.log（上で定義済み）と同様、mid ディレクトリを挟んで出力する。
-        内容は他ファイルと同じ処理内容。mid ディレクトリは自動作成される。
-    -->
-    <appender name="GC_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/mid/gc.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/mid/gc.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver_xxxxx.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -308,7 +272,7 @@
     <!--
         アプリ本体（各 REST API 機能）は DEBUG まで詳細に出力する。
         application.log に加え、上記すべてのファイルへ同じ処理内容を必ず出力する。
-        additivity=true のまま root にも伝播させ、server.log（全体）と error.log（ERROR のみ）にも載せる。
+        additivity=true のまま root にも伝播させ、コンソールと error.log（ERROR のみ）にも載せる。
     -->
     <logger name="com.example.dhapp" level="DEBUG">
         <appender-ref ref="APP_FILE"/>
@@ -324,17 +288,15 @@
         <appender-ref ref="CONNECTIN_FILE"/>
         <appender-ref ref="CONNECTOUT_FILE"/>
         <appender-ref ref="ASYNCDRIVER_ERR_FILE"/>
-        <appender-ref ref="GC_FILE"/>
     </logger>
 
     <!-- JTA/トランザクションの詳細を追いたい場合に有効化しやすいよう明示しておく -->
     <logger name="org.springframework.transaction" level="INFO"/>
     <logger name="org.springframework.jdbc.core" level="INFO"/>
 
-    <!-- root: コンソール・サーバログ（EAP 形式・全体）・エラーログ（ERROR のみ） -->
+    <!-- root: コンソール・エラーログ（ERROR のみ） -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="SERVER_FILE"/>
         <appender-ref ref="ERROR_FILE"/>
     </root>
 

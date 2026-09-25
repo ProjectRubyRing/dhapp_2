@@ -618,7 +618,7 @@ public class DateConfigService {
      * ログ基盤の設定に依存せず標準出力へも直接書き出す（{@link ConsoleWriter}）。</p>
      */
     private void emit(String report) {
-        // ログ（application.log / server.log ほか）へ 1 イベントとして出す。
+        // ログ（application.log ほか）へ 1 イベントとして出す。
         log.info("{}", report);
         // コンソール（標準出力）へ直接出す。UTF-8 固定（ConsoleWriter）。
         ConsoleWriter.println(report);

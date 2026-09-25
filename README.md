@@ -123,7 +123,7 @@ XA コマンド自体を確認したい場合は、JDBC URL に `&logXaCommands=
 | 設定ファイル読み込み確認 | `GET /api/config/date-config` | `date_config.properties` を**ファイル読み**（`/webapp/webapp9mf02/servlets/...`）と**リソース読み**（war 同梱のクラスパス配下）の 2 経路で読み、結果をログ・コンソールへ出力して比較する。deployment-overlay の反映も検知する |
 | secure-api への HTTPS 接続確認 | `GET /api/secure-api/call` | **JVM 管理**と **JBoss EAP(Elytron) 管理**の各トラストストアで compose の `secure-api` へ HTTPS 接続し、結果を詳細に画面表示・ログ出力して比較する |
 | トラストストア内容確認 | `GET /api/secure-api/truststores` | 接続せず、JVM 側・JBoss EAP 側それぞれのトラストストアの中身と elytron の登録状態を返す |
-| エラーログ検証 | `POST /api/log/error-test` | ネストした例外を `error.log` に出力する（HTTP 500 にはしない） |
+| エラーログ検証 | `POST /api/log/error-test` | ネストした例外を `<IP>_error.log` に出力する（HTTP 500 にはしない） |
 
 リクエストボディは JSON 系 API 共通（`sessionId`, `userId` は必須。`message` は任意。`failMode` は DB のみ有効）。
 外部 API（GET）と SQS 送信 API はリクエストボディ不要（送信先はどちらも設定値のみで決まる）。
@@ -477,31 +477,38 @@ API では**保存先の絶対パスと保存したファイルのサイズ**が
 > WildFly(JBoss EAP) デプロイ時は `jboss-deployment-structure.xml` で logging サブシステムを除外して
 > いるため、ログ出力は war 内の Logback（Spring Boot 標準）が担う。
 
+`${LOG_OUT_DIR}` に出力するログファイルは、ファイル名の先頭に **ホストの IPv4 アドレス（区切り文字は
+ハイフン）と `_`** がプレフィックスとして付く（以下の表では `<IP>` と表記）。例えば IP アドレスが
+`10.0.1.23` のホストでは `10-0-1-23_application.log` になる。IP アドレスは起動時に 1 回だけ取得する
+（ホスト名から引いたアドレス → 稼働中 NIC の IPv4 の順。取れなければ `127-0-0-1`）。
+
 | ファイル | パス | 内容 |
 |---|---|---|
-| アプリログ | `${LOG_OUT_DIR}/application.log` | 各 REST API 機能の処理内容を DEBUG まで詳細に記録 |
-| エラーログ | `${LOG_OUT_DIR}/error.log` | ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用） |
-| サーバログ | `${LOG_OUT_DIR}/mid/server.log` | JBoss EAP のサーバログ相当（EAP 既定フォーマット・フレームワーク含む全体） |
+| アプリログ | `${LOG_OUT_DIR}/<IP>_application.log` | 各 REST API 機能の処理内容を DEBUG まで詳細に記録 |
+| エラーログ | `${LOG_OUT_DIR}/<IP>_error.log` | ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用） |
 
 各 REST API（demo / db / cache / external / file）の処理内容は、上記に加えて以下のファイルにも
-**すべて同じ内容**で必ず出力される（`application.log` と同じ処理内容ログ）。`mid` を挟むものは
-`mid` ディレクトリ配下に出力する（ディレクトリは自動作成）。
+**すべて同じ内容**で必ず出力される（`application.log` と同じ処理内容ログ）。
 
 | ファイル | パス |
 |---|---|
-| keax0003.log | `${LOG_OUT_DIR}/keax0003.log` |
-| xxxxxxxxxx.err | `${LOG_OUT_DIR}/xxxxxxxxxx.err` |
-| accesslog | `${LOG_OUT_DIR}/accesslog` |
-| tracelog | `${LOG_OUT_DIR}/tracelog` |
-| dbiolog | `${LOG_OUT_DIR}/dbiolog` |
-| inputmsglog | `${LOG_OUT_DIR}/inputmsglog` |
-| outputmsglog | `${LOG_OUT_DIR}/outputmsglog` |
-| asyncdriver.log | `${LOG_OUT_DIR}/asyncdriver.log` |
-| authlog | `${LOG_OUT_DIR}/authlog` |
-| connectinlog | `${LOG_OUT_DIR}/connectinlog` |
-| connectoutlog | `${LOG_OUT_DIR}/connectoutlog` |
-| asyncdriver_xxxxx.err | `${LOG_OUT_DIR}/asyncdriver_xxxxx.err` |
-| gc.log | `${LOG_OUT_DIR}/mid/gc.log` |
+| keax0003.log | `${LOG_OUT_DIR}/<IP>_keax0003.log` |
+| `<ランダム>`.err | `${LOG_OUT_DIR}/<IP>_<ランダム>.err` |
+| accesslog | `${LOG_OUT_DIR}/<IP>_accesslog` |
+| tracelog | `${LOG_OUT_DIR}/<IP>_tracelog` |
+| dbiolog | `${LOG_OUT_DIR}/<IP>_dbiolog` |
+| inputmsglog | `${LOG_OUT_DIR}/<IP>_inputmsglog` |
+| outputmsglog | `${LOG_OUT_DIR}/<IP>_outputmsglog` |
+| asyncdriver.log | `${LOG_OUT_DIR}/<IP>_asyncdriver.log` |
+| authlog | `${LOG_OUT_DIR}/<IP>_authlog` |
+| connectinlog | `${LOG_OUT_DIR}/<IP>_connectinlog` |
+| connectoutlog | `${LOG_OUT_DIR}/<IP>_connectoutlog` |
+| asyncdriver_xxxxx.err | `${LOG_OUT_DIR}/<IP>_asyncdriver_xxxxx.err` |
+
+`<ランダム>.err` の `<ランダム>` 部分は英大文字・英小文字・数字（`[a-zA-Z0-9]`）10 文字のランダム文字列で、
+起動時（Logback の設定読み込み時）に 1 回だけ生成される（例: `10-0-1-23_aZ3kP9qL0x.err`）。同じ起動中は
+同じファイルに出力し、再起動ごとに別名のファイルになる。前回起動時のファイルはローテーション
+（`maxHistory`）による自動削除の対象外になるため、不要になったものは運用側で削除する。
 
 `LOG_OUT_DIR` 未設定時は `/mnt/logs/front/logs/inter-api` を使う。指定例:
 
@@ -518,7 +525,7 @@ export LOG_OUT_DIR=/var/log/dhapp
 扱えることを確認できる。
 
 ```
-[/var/log/dhapp/error.log]
+[/var/log/dhapp/10-0-1-23_error.log]
 multi_line_start_pattern = "^\d{4}-\d{2}-\d{2}"
 ```
 
@@ -535,9 +542,3 @@ curl -i -X POST "http://localhost:8080/iwinmichl/api/log/error-test?count=5"
 
 なお、DB API の 2PC ロールバック検証（`failMode`）でも `DemoException` のスタックトレースが
 `error.log` に出力される。
-
-### server.log
-
-`${LOG_OUT_DIR}/mid/server.log` は JBoss EAP の standalone server.log 既定フォーマット
-（`%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n` 相当）で、アプリだけでなく
-Spring/WildFly 由来のログを含む全体を記録する。`mid` ディレクトリは自動作成される。
