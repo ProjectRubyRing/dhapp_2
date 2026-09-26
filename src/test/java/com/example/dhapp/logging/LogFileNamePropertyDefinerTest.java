@@ -31,9 +31,20 @@ class LogFileNamePropertyDefinerTest {
         String defaultValue = definer.getPropertyValue();
         assertTrue(defaultValue.matches("[a-zA-Z0-9]{10}"), defaultValue);
 
-        definer.setLength(16);
+        definer.setLength(20);
         String value = definer.getPropertyValue();
-        assertTrue(value.matches("[a-zA-Z0-9]{16}"), value);
+        assertTrue(value.matches("[a-zA-Z0-9]{20}"), value);
+        assertNotEquals(value, definer.getPropertyValue());
+    }
+
+    @Test
+    void randomStringUsesConfiguredCharacters() {
+        RandomStringPropertyDefiner definer = new RandomStringPropertyDefiner();
+        definer.setLength(17);
+        definer.setCharacters("0123456789");
+
+        String value = definer.getPropertyValue();
+        assertTrue(value.matches("[0-9]{17}"), value);
         assertNotEquals(value, definer.getPropertyValue());
     }
 }

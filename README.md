@@ -493,22 +493,32 @@ API では**保存先の絶対パスと保存したファイルのサイズ**が
 | ファイル | パス |
 |---|---|
 | keax0003.log | `${EFS_LOGS_PATH}/<IP>_keax0003.log` |
+| keax0010.log | `${EFS_LOGS_PATH}/<IP>_keax0010.log` |
 | `<ランダム>`.err | `${EFS_LOGS_PATH}/<IP>_<ランダム>.err` |
 | accesslog | `${EFS_LOGS_PATH}/<IP>_accesslog` |
 | tracelog | `${EFS_LOGS_PATH}/<IP>_tracelog` |
 | dbiolog | `${EFS_LOGS_PATH}/<IP>_dbiolog` |
+| dbiolog_dao | `${EFS_LOGS_PATH}/<IP>_dbiolog_dao` |
 | inputmsglog | `${EFS_LOGS_PATH}/<IP>_inputmsglog` |
 | outputmsglog | `${EFS_LOGS_PATH}/<IP>_outputmsglog` |
 | asyncdriver.log | `${EFS_LOGS_PATH}/<IP>_asyncdriver.log` |
 | authlog | `${EFS_LOGS_PATH}/<IP>_authlog` |
 | connectinlog | `${EFS_LOGS_PATH}/<IP>_connectinlog` |
 | connectoutlog | `${EFS_LOGS_PATH}/<IP>_connectoutlog` |
-| asyncdriver_xxxxx.err | `${EFS_LOGS_PATH}/<IP>_asyncdriver_xxxxx.err` |
+| mrdlog | `${EFS_LOGS_PATH}/<IP>_mrdlog` |
+| asyncdriver_`<ランダム数字>`.err | `${EFS_LOGS_PATH}/<IP>_asyncdriver_<ランダム数字>.err` |
 
-`<ランダム>.err` の `<ランダム>` 部分は英大文字・英小文字・数字（`[a-zA-Z0-9]`）10 文字のランダム文字列で、
-起動時（Logback の設定読み込み時）に 1 回だけ生成される（例: `10-0-1-23_aZ3kP9qL0x.err`）。同じ起動中は
-同じファイルに出力し、再起動ごとに別名のファイルになる。前回起動時のファイルはローテーション
+`<ランダム>.err` の `<ランダム>` 部分は英大文字・英小文字・数字（`[a-zA-Z0-9]`）20 文字のランダム文字列、
+`asyncdriver_<ランダム数字>.err` の `<ランダム数字>` 部分は数字（`[0-9]`）17 桁のランダム文字列で、
+どちらも起動時（Logback の設定読み込み時）に 1 回だけ生成される
+（例: `10-0-1-23_aZ3kP9qL0xT7mB2nR5wY.err`、`10-0-1-23_asyncdriver_48213907561234098.err`）。
+同じ起動中は同じファイルに出力し、再起動ごとに別名のファイルになる。前回起動時のファイルはローテーション
 （`maxHistory`）による自動削除の対象外になるため、不要になったものは運用側で削除する。
+
+すべてのログファイル（`application.log` / `error.log` を含む）は **1 時間ごと** にローテーションし、
+ローテーション後のファイル名は出力中のファイル名の後ろに `.%d{yyyy-MM-dd-HH}` を付けたものになる
+（例: `10-0-1-23_keax0010.log.2026-09-26-14`、`10-0-1-23_mrdlog.2026-09-26-14`）。
+各ファイルとも直近 336 時間（14 日）分を保持し、ローテーション済みファイルの合計が 1GB を超えたら古いものから削除する。
 
 `EFS_LOGS_PATH` 未設定時は `/mnt/logs/front/logs/inter-api` を使う。指定例:
 
