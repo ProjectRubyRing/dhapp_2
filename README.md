@@ -467,7 +467,7 @@ aws sqs receive-message --queue-url "$SQS_QUEUE_URL" --query 'Messages[].Body'
 各機能（demo / db / cache / external / external-get / sqs / file / tls / config / secure-api）は、REST API で処理した内容
 （リクエスト内容・処理ステップ・レスポンス・処理時間）を詳細にログへ出力する。ファイルアップロード
 API では**保存先の絶対パスと保存したファイルのサイズ**が INFO で出力される。出力先・フォーマットは
-`src/main/resources/logback-spring.xml` で構成し、出力ルートは **環境変数 `LOG_OUT_DIR`** で指定する。
+`src/main/resources/logback-spring.xml` で構成し、出力ルートは **環境変数 `EFS_LOGS_PATH`** で指定する。
 
 `GET /api/config/date-config` と `GET /api/secure-api/call` は、結果のテキストレポートを
 **ログと同時にコンソール（標準出力）へも直接出力する**。コンソールへの出力は UTF-8 固定で書くため、
@@ -477,44 +477,44 @@ API では**保存先の絶対パスと保存したファイルのサイズ**が
 > WildFly(JBoss EAP) デプロイ時は `jboss-deployment-structure.xml` で logging サブシステムを除外して
 > いるため、ログ出力は war 内の Logback（Spring Boot 標準）が担う。
 
-`${LOG_OUT_DIR}` に出力するログファイルは、ファイル名の先頭に **ホストの IPv4 アドレス（区切り文字は
+`${EFS_LOGS_PATH}` に出力するログファイルは、ファイル名の先頭に **ホストの IPv4 アドレス（区切り文字は
 ハイフン）と `_`** がプレフィックスとして付く（以下の表では `<IP>` と表記）。例えば IP アドレスが
 `10.0.1.23` のホストでは `10-0-1-23_application.log` になる。IP アドレスは起動時に 1 回だけ取得する
 （ホスト名から引いたアドレス → 稼働中 NIC の IPv4 の順。取れなければ `127-0-0-1`）。
 
 | ファイル | パス | 内容 |
 |---|---|---|
-| アプリログ | `${LOG_OUT_DIR}/<IP>_application.log` | 各 REST API 機能の処理内容を DEBUG まで詳細に記録 |
-| エラーログ | `${LOG_OUT_DIR}/<IP>_error.log` | ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用） |
+| アプリログ | `${EFS_LOGS_PATH}/<IP>_application.log` | 各 REST API 機能の処理内容を DEBUG まで詳細に記録 |
+| エラーログ | `${EFS_LOGS_PATH}/<IP>_error.log` | ERROR のみ。Java 例外スタックトレース形式（CloudWatch マルチライン検証用） |
 
 各 REST API（demo / db / cache / external / file）の処理内容は、上記に加えて以下のファイルにも
 **すべて同じ内容**で必ず出力される（`application.log` と同じ処理内容ログ）。
 
 | ファイル | パス |
 |---|---|
-| keax0003.log | `${LOG_OUT_DIR}/<IP>_keax0003.log` |
-| `<ランダム>`.err | `${LOG_OUT_DIR}/<IP>_<ランダム>.err` |
-| accesslog | `${LOG_OUT_DIR}/<IP>_accesslog` |
-| tracelog | `${LOG_OUT_DIR}/<IP>_tracelog` |
-| dbiolog | `${LOG_OUT_DIR}/<IP>_dbiolog` |
-| inputmsglog | `${LOG_OUT_DIR}/<IP>_inputmsglog` |
-| outputmsglog | `${LOG_OUT_DIR}/<IP>_outputmsglog` |
-| asyncdriver.log | `${LOG_OUT_DIR}/<IP>_asyncdriver.log` |
-| authlog | `${LOG_OUT_DIR}/<IP>_authlog` |
-| connectinlog | `${LOG_OUT_DIR}/<IP>_connectinlog` |
-| connectoutlog | `${LOG_OUT_DIR}/<IP>_connectoutlog` |
-| asyncdriver_xxxxx.err | `${LOG_OUT_DIR}/<IP>_asyncdriver_xxxxx.err` |
+| keax0003.log | `${EFS_LOGS_PATH}/<IP>_keax0003.log` |
+| `<ランダム>`.err | `${EFS_LOGS_PATH}/<IP>_<ランダム>.err` |
+| accesslog | `${EFS_LOGS_PATH}/<IP>_accesslog` |
+| tracelog | `${EFS_LOGS_PATH}/<IP>_tracelog` |
+| dbiolog | `${EFS_LOGS_PATH}/<IP>_dbiolog` |
+| inputmsglog | `${EFS_LOGS_PATH}/<IP>_inputmsglog` |
+| outputmsglog | `${EFS_LOGS_PATH}/<IP>_outputmsglog` |
+| asyncdriver.log | `${EFS_LOGS_PATH}/<IP>_asyncdriver.log` |
+| authlog | `${EFS_LOGS_PATH}/<IP>_authlog` |
+| connectinlog | `${EFS_LOGS_PATH}/<IP>_connectinlog` |
+| connectoutlog | `${EFS_LOGS_PATH}/<IP>_connectoutlog` |
+| asyncdriver_xxxxx.err | `${EFS_LOGS_PATH}/<IP>_asyncdriver_xxxxx.err` |
 
 `<ランダム>.err` の `<ランダム>` 部分は英大文字・英小文字・数字（`[a-zA-Z0-9]`）10 文字のランダム文字列で、
 起動時（Logback の設定読み込み時）に 1 回だけ生成される（例: `10-0-1-23_aZ3kP9qL0x.err`）。同じ起動中は
 同じファイルに出力し、再起動ごとに別名のファイルになる。前回起動時のファイルはローテーション
 （`maxHistory`）による自動削除の対象外になるため、不要になったものは運用側で削除する。
 
-`LOG_OUT_DIR` 未設定時は `/mnt/logs/front/logs/inter-api` を使う。指定例:
+`EFS_LOGS_PATH` 未設定時は `/mnt/logs/front/logs/inter-api` を使う。指定例:
 
 ```
 # Linux/WildFly
-export LOG_OUT_DIR=/var/log/dhapp
+export EFS_LOGS_PATH=/var/log/dhapp
 ```
 
 ### error.log（CloudWatch Agent マルチライン検証）

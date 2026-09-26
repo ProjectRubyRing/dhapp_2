@@ -21,7 +21,7 @@ import com.example.dhapp.dto.ErrorResponse;
  * 実際に処理を止めずに（HTTP 500 にせず）、Java の例外スタックトレース形式のエラーログを
  * わざと出力するための機能。GlobalExceptionHandler には伝播させず、この中で捕捉して
  * log.error(msg, throwable) で記録するため、出力先は logback-spring.xml の設定により
- * {@code ${LOG_OUT_DIR}/<IP>_error.log}（例: {@code 10-0-1-23_error.log}）となる。
+ * {@code ${EFS_LOGS_PATH}/<IP>_error.log}（例: {@code 10-0-1-23_error.log}）となる。
  *
  * 生成する例外は「Caused by:」を 2 段含むネストした連鎖にしてあり、
  * 1 つのエラーが複数行（先頭タイムスタンプ + "\tat ..." + "Caused by:" + "... N more"）に

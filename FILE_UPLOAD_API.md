@@ -374,7 +374,7 @@ sha256sum /tmp/sample_1mb.bin
 
 ### 6-4. ログ出力
 
-`${LOG_OUT_DIR}/<IP>_application.log`（および `<IP>_keax0003.log` ほか、他の REST API と同じ全ファイル）に
+`${EFS_LOGS_PATH}/<IP>_application.log`（および `<IP>_keax0003.log` ほか、他の REST API と同じ全ファイル）に
 次の内容が出力される。**保存場所と保存したファイルのサイズは INFO で出力される。**
 
 ```
@@ -660,4 +660,4 @@ Spring MVC が 415 を返す（`UploadErrorResponse` 形式ではない）。
 ## 9. 参考
 
 - 全 API の一覧・ログ出力先: [README.md](README.md)
-- ログファイル一覧は `src/main/resources/logback-spring.xml` で構成。出力ルートは環境変数 `LOG_OUT_DIR`
+- ログファイル一覧は `src/main/resources/logback-spring.xml` で構成。出力ルートは環境変数 `EFS_LOGS_PATH`

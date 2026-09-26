@@ -164,7 +164,7 @@ curl -s "http://localhost:8080/iwinmichl/api/secure-api/truststores?format=text"
 
 ## ログ・コンソール出力
 
-`GET /api/config/date-config` と同様、結果は**ログ**（`LOG_OUT_DIR` 配下の各ログファイル）と
+`GET /api/config/date-config` と同様、結果は**ログ**（`EFS_LOGS_PATH` 配下の各ログファイル）と
 **コンソール**（標準出力・UTF-8 固定）へ同じテキストレポートで出力され、
 レスポンスの `report`／`?format=text` からも同じものが取得できる。
 

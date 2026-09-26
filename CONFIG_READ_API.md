@@ -199,7 +199,7 @@ overlay の**定義の有無**だけなら `dateConfigOverlayDefined` で 1 回�
 
 | 出力先 | 内容 |
 |---|---|
-| ログ | `LOG_OUT_DIR` 配下の各ログファイル（`application.log` ほか。`logback-spring.xml` の設定どおり） |
+| ログ | `EFS_LOGS_PATH` 配下の各ログファイル（`application.log` ほか。`logback-spring.xml` の設定どおり） |
 | コンソール | 標準出力へ直接（UTF-8 固定。ログ基盤の設定に依存しない） |
 | レスポンス | `report` フィールド、または `?format=text` |
 

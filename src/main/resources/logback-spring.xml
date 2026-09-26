@@ -6,20 +6,20 @@
     jboss-deployment-structure.xml で logging サブシステムを除外しているため、
     ログ出力はこの war 内の Logback（Spring Boot 標準バインディング）が担う。
 
-    出力先はすべて環境変数 LOG_OUT_DIR で指定したディレクトリ配下に集約する。
+    出力先はすべて環境変数 EFS_LOGS_PATH で指定したディレクトリ配下に集約する。
     （未設定時は /mnt/logs/front/logs/inter-api）
 
     ファイル名の先頭には、このホストの IPv4 アドレス（区切り文字をハイフンにしたもの）と
     "_" をプレフィックスとして付ける。例: 10.0.1.23 のホストなら 10-0-1-23_application.log
 
-      ${LOG_OUT_DIR}/<IP>_application.log   … 各 REST API 機能の処理内容を詳細に記録（アプリログ）
-      ${LOG_OUT_DIR}/<IP>_error.log        … ERROR レベルのみ。Java 例外スタックトレース形式で出力。
+      ${EFS_LOGS_PATH}/<IP>_application.log   … 各 REST API 機能の処理内容を詳細に記録（アプリログ）
+      ${EFS_LOGS_PATH}/<IP>_error.log        … ERROR レベルのみ。Java 例外スタックトレース形式で出力。
                                               CloudWatch Agent のマルチライン処理検証用。
 -->
 <configuration>
 
-    <!-- 出力ルートディレクトリ（環境変数 LOG_OUT_DIR）。未設定なら /mnt/logs/front/logs/inter-api -->
-    <property name="LOG_OUT_DIR" value="${LOG_OUT_DIR:-/mnt/logs/front/logs/inter-api}"/>
+    <!-- 出力ルートディレクトリ（環境変数 EFS_LOGS_PATH）。未設定なら /mnt/logs/front/logs/inter-api -->
+    <property name="EFS_LOGS_PATH" value="${EFS_LOGS_PATH:-/mnt/logs/front/logs/inter-api}"/>
 
     <!-- ファイル名プレフィックス用のホスト IPv4 アドレス（例: 10-0-1-23） -->
     <define name="HOST_IP" class="com.example.dhapp.logging.HostIpPropertyDefiner"/>
@@ -44,11 +44,11 @@
         </encoder>
     </appender>
 
-    <!-- ===== アプリログ: LOG_OUT_DIR/<IP>_application.log ===== -->
+    <!-- ===== アプリログ: EFS_LOGS_PATH/<IP>_application.log ===== -->
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_application.log</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_application.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -60,7 +60,7 @@
     </appender>
 
     <!--
-        ===== エラーログ: LOG_OUT_DIR/<IP>_error.log =====
+        ===== エラーログ: EFS_LOGS_PATH/<IP>_error.log =====
         ERROR レベルのみを通す。例外は %ex により標準の Java スタックトレース形式で
         （"Caused by:" / "... N more" を含めて）複数行に展開される。
         各エントリは必ず先頭がタイムスタンプで始まるため、CloudWatch Agent 側で
@@ -68,12 +68,12 @@
         スタックトレース全体を 1 イベントとして扱えることを確認できる。
     -->
     <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_error.log</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_error.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>ERROR</level>
         </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -98,9 +98,9 @@
         <ランダム>.err の <ランダム> 部分は ERR_FILE_ID（起動ごとに生成する英数字 10 文字）。
     -->
     <appender name="KEAX_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_keax0003.log</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_keax0003.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_keax0003.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_keax0003.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -112,9 +112,9 @@
     </appender>
 
     <appender name="ERR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_${ERR_FILE_ID}.err</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_${ERR_FILE_ID}.err</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_${ERR_FILE_ID}.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_${ERR_FILE_ID}.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -126,9 +126,9 @@
     </appender>
 
     <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_accesslog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_accesslog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_accesslog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_accesslog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -140,9 +140,9 @@
     </appender>
 
     <appender name="TRACE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_tracelog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_tracelog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_tracelog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_tracelog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -154,9 +154,9 @@
     </appender>
 
     <appender name="DBIO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_dbiolog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_dbiolog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_dbiolog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_dbiolog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -168,9 +168,9 @@
     </appender>
 
     <appender name="INPUTMSG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_inputmsglog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_inputmsglog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_inputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_inputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -182,9 +182,9 @@
     </appender>
 
     <appender name="OUTPUTMSG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_outputmsglog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_outputmsglog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_outputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_outputmsglog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -196,9 +196,9 @@
     </appender>
 
     <appender name="ASYNCDRIVER_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver.log</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_asyncdriver.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_asyncdriver.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -210,9 +210,9 @@
     </appender>
 
     <appender name="AUTH_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_authlog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_authlog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_authlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_authlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -224,9 +224,9 @@
     </appender>
 
     <appender name="CONNECTIN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_connectinlog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_connectinlog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_connectinlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_connectinlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -238,9 +238,9 @@
     </appender>
 
     <appender name="CONNECTOUT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_connectoutlog</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_connectoutlog</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_connectoutlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_connectoutlog.%d{yyyy-MM-dd}.%i</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
@@ -256,9 +256,9 @@
         （xxxxx 部分はファイル名の一部としてそのまま扱う。ランダム化はしない）
     -->
     <appender name="ASYNCDRIVER_ERR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver_xxxxx.err</file>
+        <file>${EFS_LOGS_PATH}/${HOST_IP}_asyncdriver_xxxxx.err</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_OUT_DIR}/${HOST_IP}_asyncdriver_xxxxx.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
+            <fileNamePattern>${EFS_LOGS_PATH}/${HOST_IP}_asyncdriver_xxxxx.%d{yyyy-MM-dd}.%i.err</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
